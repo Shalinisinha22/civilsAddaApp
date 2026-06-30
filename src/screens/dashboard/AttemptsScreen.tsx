@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@contexts/AuthContext';
 import { api } from '@api/api';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { AppNavigationParamList } from '@navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
@@ -100,7 +101,7 @@ const AttemptsScreen: React.FC = () => {
         </View>
       ) : attempts.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>📝</Text>
+          <Icons.Document size={40} color={colors.gray400} />
           <Text style={styles.emptyTitle}>No attempts yet</Text>
           <Text style={styles.emptyText}>
             Start taking tests to see your performance here
@@ -234,10 +235,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.gray200,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 20,

@@ -8,14 +8,9 @@ import SettingsScreen from '@screens/settings/SettingsScreen';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@contexts/AuthContext';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { useTranslation } from 'react-i18next';
-
-export type DrawerParamList = {
-  HomeTabs: undefined;
-  MyTests: undefined;
-  Performance: undefined;
-  Settings: undefined;
-};
+import type { DrawerParamList } from '@navigation/types';
 
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
@@ -83,7 +78,7 @@ const AppDrawer: React.FC = () => {
         component={MainTabs}
         options={{
           title: 'Overview',
-          drawerIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📊</Text>,
+          drawerIcon: ({ color }) => <Icons.Dashboard size={20} color={color} />,
         }}
       />
       <Drawer.Screen
@@ -91,7 +86,7 @@ const AppDrawer: React.FC = () => {
         component={MyTestsScreen}
         options={{
           title: 'My Tests',
-          drawerIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📚</Text>,
+          drawerIcon: ({ color }) => <Icons.Book size={20} color={color} />,
         }}
       />
       <Drawer.Screen
@@ -99,7 +94,7 @@ const AppDrawer: React.FC = () => {
         component={PerformanceScreen}
         options={{
           title: 'Performance',
-          drawerIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📈</Text>,
+          drawerIcon: ({ color }) => <Icons.Statistics size={20} color={color} />,
         }}
       />
       <Drawer.Screen
@@ -107,7 +102,7 @@ const AppDrawer: React.FC = () => {
         component={SettingsScreen}
         options={{
           title: 'Settings',
-          drawerIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>⚙️</Text>,
+          drawerIcon: ({ color }) => <Icons.Settings size={20} color={color} />,
         }}
       />
     </Drawer.Navigator>

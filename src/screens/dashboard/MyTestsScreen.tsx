@@ -13,6 +13,7 @@ import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
 import { api } from '@api/api';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { AppNavigationParamList } from '@navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
@@ -106,12 +107,18 @@ const MyTestsScreen: React.FC = () => {
                 {test.description}
               </Text>
               <View style={styles.testMeta}>
-                <Text style={styles.testMetaText}>
-                  📝 {test.totalQuestions} Questions
-                </Text>
-                <Text style={styles.testMetaText}>
-                  ⏱️ {test.durationMinutes} min
-                </Text>
+                <View style={styles.testMetaRow}>
+                  <Icons.Questions size={14} color={colors.gray600} />
+                  <Text style={styles.testMetaText}>
+                    {' '}{test.totalQuestions} Questions
+                  </Text>
+                </View>
+                <View style={styles.testMetaRow}>
+                  <Icons.Clock size={14} color={colors.gray600} />
+                  <Text style={styles.testMetaText}>
+                    {' '}{test.durationMinutes} min
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity
                 style={[
@@ -269,6 +276,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 16,
     marginBottom: 12,
+  },
+  testMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   testMetaText: {
     fontSize: 12,

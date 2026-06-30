@@ -9,22 +9,21 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors } from '@theme/colors';
+import { colors, elevation, typography, spacing, borderRadius } from '@theme/colors';
 import { api } from '@api/api';
 import { useCart } from '@contexts/CartContext';
 import { useToast } from '@contexts/ToastContext';
 import type { AppNavigationParamList } from '@navigation/types';
+import { Icons } from '@components/Icons';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 
-type TestSummary = {
+type PackageSummary = {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  durationMinutes: number;
-  totalQuestions: number;
+  totalTests: number;
   price: number;
-  category?: string;
   isPurchased?: boolean;
 };
 
@@ -33,30 +32,24 @@ const HomeScreen: React.FC = () => {
   const { addToCart } = useCart();
   const { addToast } = useToast();
 
-  const [tests, setTests] = useState<TestSummary[]>([]);
+  const [packages, setPackages] = useState<PackageSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await api.tests.getAll();
+        const res = await api.packages.getAll();
         if (res.success && res.data) {
-          const mapped: TestSummary[] = (res.data as any[]).map((test) => ({
-            id: test.id || test._id,
-            title: test.title,
-            description: test.description || '',
-            durationMinutes: test.durationMinutes,
-            totalQuestions:
-              test.totalQuestions ?? (test.questions ? test.questions.length : 0),
-            price: test.price,
-            category: test.category
-              ? test.category.charAt(0).toUpperCase() +
-                test.category.slice(1).replace('-', ' ')
-              : undefined,
-            isPurchased: !!test.isPurchased,
+          const mapped: PackageSummary[] = (res.data as any[]).map((pkg) => ({
+            id: pkg.id || pkg._id,
+            name: pkg.name,
+            description: pkg.description || '',
+            totalTests: pkg.totalTests || 0,
+            price: pkg.price || 0,
+            isPurchased: !!pkg.isPurchased,
           }));
-          setTests(mapped);
+          setPackages(mapped);
         }
       } finally {
         setLoading(false);
@@ -66,19 +59,21 @@ const HomeScreen: React.FC = () => {
     load();
   }, []);
 
-  const handleAddToCart = (test: TestSummary) => {
+  const handleAddToCart = (pkg: PackageSummary) => {
     addToCart({
-      id: test.id,
-      title: test.title,
-      description: test.description,
-      price: test.price,
-      durationMinutes: test.durationMinutes,
-      totalQuestions: test.totalQuestions,
+      id: pkg.id,
+      title: pkg.name,
+      description: pkg.description,
+      price: pkg.price,
+      durationMinutes: 0,
+      totalQuestions: 0,
+      kind: 'package',
+      totalTests: pkg.totalTests,
     });
-    addToast(`${test.title} added to cart!`, 'success');
+    addToast(`${pkg.name} added to cart!`, 'success');
   };
 
-  const trending = tests.slice(0, 4);
+  const trending = packages.slice(0, 4);
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -138,7 +133,7 @@ const HomeScreen: React.FC = () => {
           {['Polity', 'History', 'Economy', 'Geography', 'Science', 'Reasoning'].map(
             (name) => (
               <View key={name} style={styles.categoryCard}>
-                <Text style={styles.categoryEmoji}>📘</Text>
+                <Icons.Book size={22} color={colors.primary} />
                 <Text style={styles.categoryName}>{name}</Text>
               </View>
             ),
@@ -146,9 +141,9 @@ const HomeScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Featured / Trending tests */}
+      {/* Featured / Trending Packages */}
       <View style={styles.trendingHeaderRow}>
-        <Text style={styles.trendingTitle}>Trending Tests</Text>
+        <Text style={styles.trendingTitle}>Trending Packages</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Tests')}>
           <Text style={styles.trendingLink}>View all →</Text>
         </TouchableOpacity>
@@ -157,65 +152,67 @@ const HomeScreen: React.FC = () => {
       {loading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.loadingText}>Loading tests...</Text>
+          <Text style={styles.loadingText}>Loading packages...</Text>
         </View>
       ) : (
         <View style={styles.trendingGrid}>
-          {trending.map((test) => (
-            <View key={test.id} style={styles.card}>
+          {trending.map((pkg) => (
+            <View key={pkg.id} style={styles.card}>
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  {test.category ? (
-                    <View style={styles.categoryPill}>
-                      <Text style={styles.categoryText}>{test.category}</Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.cardTitle}>{test.title}</Text>
+                  <Text style={styles.cardTitle}>{pkg.name}</Text>
+                  <View style={styles.packageTag}>
+                    <Text style={styles.packageTagText}>📦 {pkg.totalTests} tests</Text>
+                  </View>
                 </View>
                 <View
                   style={[
                     styles.priceBadge,
-                    test.price === 0 && styles.priceBadgeFreeContainer,
+                    pkg.price === 0 && styles.priceBadgeFreeContainer,
                   ]}
                 >
                   <Text
                     style={[
                       styles.priceBadgeText,
-                      test.price === 0 && styles.priceBadgeFreeText,
+                      pkg.price === 0 && styles.priceBadgeFreeText,
                     ]}
                   >
-                    {test.price === 0 ? 'Free' : `₹${test.price}`}
+                    {pkg.price === 0 ? 'Free' : `₹${pkg.price}`}
                   </Text>
                 </View>
               </View>
-              {test.description ? (
+              {pkg.description ? (
                 <Text style={styles.description} numberOfLines={3}>
-                  {test.description}
+                  {pkg.description}
                 </Text>
               ) : null}
-              <Text style={styles.metaText}>
-                📝 {test.totalQuestions} Q • ⏱️ {test.durationMinutes} min
-              </Text>
+              <View style={styles.metaRow}>
+                <Icons.Document size={14} color={colors.onSurfaceVariant} />
+                <Text style={styles.metaText}>
+                  {' '}{pkg.totalTests} test{pkg.totalTests !== 1 ? 's' : ''}
+                </Text>
+              </View>
 
               <View style={styles.cardButtonsRow}>
                 <TouchableOpacity
                   style={[styles.cardButton, styles.viewButton]}
                   onPress={() =>
-                    navigation.navigate('TestDetail', { testId: test.id })
+                    navigation.navigate('Tests')
                   }
                 >
-                  <Text style={styles.viewButtonText}>View</Text>
+                  <Text style={styles.viewButtonText}>View Details</Text>
                 </TouchableOpacity>
-                {test.isPurchased ? (
-                  <View
-                    style={[styles.cardButton, styles.purchasedButton]}
-                  >
-                    <Text style={styles.purchasedText}>✓ Purchased</Text>
+                {pkg.isPurchased ? (
+                  <View style={[styles.cardButton, styles.purchasedButton]}>
+                    <View style={styles.purchasedRow}>
+                    <Icons.Check size={14} color={colors.white} />
+                    <Text style={styles.purchasedText}> Purchased</Text>
+                  </View>
                   </View>
                 ) : (
                   <TouchableOpacity
                     style={[styles.cardButton, styles.addToCartButton]}
-                    onPress={() => handleAddToCart(test)}
+                    onPress={() => handleAddToCart(pkg)}
                   >
                     <Text style={styles.addToCartText}>Add to Cart</Text>
                   </TouchableOpacity>
@@ -282,7 +279,7 @@ const HomeScreen: React.FC = () => {
         <View style={styles.faqCard}>
           <Text style={styles.faqQuestion}>How do I purchase tests?</Text>
           <Text style={styles.faqAnswer}>
-            Browse our test collection, add tests to your cart, and complete checkout.
+            Browse our test packages, add a package to your cart, and complete checkout via Razorpay.
           </Text>
         </View>
       </View>
@@ -312,119 +309,116 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.gray50,
+    backgroundColor: colors.background,
   },
   content: {
-    paddingBottom: 32,
+    paddingBottom: spacing.xl,
   },
   hero: {
-    paddingHorizontal: 16,
-    paddingTop: 32,
-    paddingBottom: 32,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
     backgroundColor: colors.primary,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
   },
   heroBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    marginBottom: 10,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginBottom: spacing.sm + 2,
   },
   heroBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#E5E7EB',
+    ...typography.labelSmall,
+    color: colors.onPrimary,
+    opacity: 0.9,
   },
   heroTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.white,
-    marginBottom: 8,
+    ...typography.headlineMedium,
+    color: colors.onPrimary,
+    marginBottom: spacing.sm,
+    fontWeight: '600',
   },
   heroSubtitle: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    marginBottom: 20,
+    ...typography.bodyMedium,
+    color: colors.onPrimary,
+    marginBottom: spacing.lg,
+    opacity: 0.9,
   },
   heroButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
   },
   heroButton: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 999,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
   },
   heroPrimaryButton: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.onPrimary,
+    ...elevation[2],
   },
   heroPrimaryText: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.labelLarge,
     color: colors.primary,
+    fontWeight: '600',
   },
   heroSecondaryButton: {
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.5)',
     backgroundColor: 'transparent',
   },
   heroSecondaryText: {
-    fontSize: 14,
+    ...typography.labelLarge,
+    color: colors.onPrimary,
     fontWeight: '600',
-    color: colors.white,
   },
   trendingHeaderRow: {
-    marginTop: 24,
-    marginBottom: 8,
-    paddingHorizontal: 16,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   trendingTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.gray900,
+    ...typography.titleLarge,
+    color: colors.onSurface,
+    fontWeight: '600',
   },
   trendingLink: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.labelMedium,
     color: colors.primary,
+    fontWeight: '600',
   },
   loadingBox: {
-    marginHorizontal: 16,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray200,
+    marginHorizontal: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
     alignItems: 'center',
+    ...elevation[1],
   },
   loadingText: {
-    marginTop: 8,
-    color: colors.gray600,
+    marginTop: spacing.sm,
+    ...typography.bodyMedium,
+    color: colors.onSurfaceVariant,
   },
   trendingGrid: {
-    paddingHorizontal: 16,
-    marginTop: 4,
-    gap: 12,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    gap: spacing.md,
   },
   card: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.gray100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    ...elevation[2],
   },
   cardHeader: {
     flexDirection: 'row',
@@ -434,177 +428,189 @@ const styles = StyleSheet.create({
   },
   categoryPill: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: '#eff6ff',
-    marginBottom: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryContainer,
+    marginBottom: spacing.xs,
   },
   categoryText: {
-    fontSize: 11,
+    ...typography.labelSmall,
+    color: colors.onPrimaryContainer,
     fontWeight: '600',
-    color: '#1d4ed8',
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.gray900,
+    ...typography.titleMedium,
+    color: colors.onSurface,
+    fontWeight: '600',
+  },
+  packageTag: {
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  packageTagText: {
+    fontSize: 11,
+    color: colors.onSurfaceVariant,
   },
   priceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.gray100,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surfaceVariant,
   },
   priceBadgeFreeContainer: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.successLight + '30',
   },
   priceBadgeText: {
-    fontSize: 11,
+    ...typography.labelSmall,
+    color: colors.onSurfaceVariant,
     fontWeight: '600',
-    color: colors.gray800,
   },
   priceBadgeFreeText: {
-    color: '#15803d',
+    color: colors.successDark,
   },
   description: {
-    fontSize: 13,
-    color: colors.gray600,
-    marginBottom: 6,
-    marginTop: 4,
+    ...typography.bodyMedium,
+    color: colors.onSurfaceVariant,
+    marginBottom: spacing.sm - 2,
+    marginTop: spacing.xs,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   metaText: {
-    fontSize: 11,
-    color: colors.gray500,
+    ...typography.bodySmall,
+    color: colors.onSurfaceVariant,
   },
   cardButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   cardButton: {
     flex: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 40,
   },
   viewButton: {
-    backgroundColor: colors.gray100,
+    backgroundColor: colors.surfaceVariant,
   },
   viewButtonText: {
-    fontSize: 13,
+    ...typography.labelMedium,
+    color: colors.onSurfaceVariant,
     fontWeight: '600',
-    color: colors.gray700,
   },
   addToCartButton: {
     backgroundColor: colors.primary,
+    ...elevation[2],
   },
   addToCartText: {
-    fontSize: 13,
+    ...typography.labelMedium,
+    color: colors.onPrimary,
     fontWeight: '600',
-    color: colors.white,
   },
   purchasedButton: {
     backgroundColor: colors.success,
+    ...elevation[1],
+  },
+  purchasedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   purchasedText: {
-    fontSize: 13,
+    ...typography.labelMedium,
+    color: colors.onPrimary,
     fontWeight: '600',
-    color: colors.white,
   },
   statsRow: {
-    marginTop: 16,
-    paddingHorizontal: 16,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
   },
   statCard: {
     flexBasis: '48%',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: colors.gray100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md - 4,
+    paddingHorizontal: spacing.sm + 2,
+    ...elevation[1],
   },
   statNumber: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.gray900,
+    ...typography.titleLarge,
+    color: colors.onSurface,
+    fontWeight: '700',
   },
   statLabel: {
-    fontSize: 11,
-    color: colors.gray600,
-    marginTop: 4,
+    ...typography.bodySmall,
+    color: colors.onSurfaceVariant,
+    marginTop: spacing.xs,
   },
   section: {
-    marginTop: 24,
-    paddingHorizontal: 16,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.gray900,
-    marginBottom: 4,
+    ...typography.titleLarge,
+    color: colors.onSurface,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
   },
   sectionSubtitle: {
-    fontSize: 13,
-    color: colors.gray600,
-    marginBottom: 12,
+    ...typography.bodyMedium,
+    color: colors.onSurfaceVariant,
+    marginBottom: spacing.md - 4,
   },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.sm + 2,
   },
   categoryCard: {
     flexBasis: '31%',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md - 4,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.gray200,
+    ...elevation[1],
   },
   categoryEmoji: {
-    fontSize: 22,
-    marginBottom: 4,
+    fontSize: 24,
+    marginBottom: spacing.xs,
   },
   categoryName: {
-    fontSize: 12,
+    ...typography.labelMedium,
+    color: colors.onSurface,
     fontWeight: '600',
-    color: colors.gray800,
   },
   stepsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: spacing.sm + 2,
   },
   stepCard: {
     flexBasis: '47%',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.gray200,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md - 4,
+    ...elevation[1],
   },
   stepBadge: {
-    fontSize: 12,
+    ...typography.labelMedium,
     fontWeight: '700',
     color: colors.primary,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   stepTitle: {
-    fontSize: 14,
+    ...typography.titleSmall,
     fontWeight: '600',
-    color: colors.gray900,
+    color: colors.onSurface,
   },
   appButton: {
     alignSelf: 'flex-start',
@@ -622,89 +628,89 @@ const styles = StyleSheet.create({
   partnerRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
+    gap: spacing.sm + 2,
+    marginTop: spacing.sm,
   },
   partnerCard: {
     flexBasis: '30%',
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md - 4,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.gray200,
+    ...elevation[1],
   },
   partnerLetter: {
-    fontSize: 18,
+    ...typography.titleMedium,
     fontWeight: '700',
     color: colors.primary,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   partnerLabel: {
-    fontSize: 11,
-    color: colors.gray700,
+    ...typography.bodySmall,
+    color: colors.onSurfaceVariant,
   },
   faqCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-    marginTop: 8,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md - 4,
+    marginTop: spacing.sm,
+    ...elevation[1],
   },
   faqQuestion: {
-    fontSize: 14,
+    ...typography.titleSmall,
     fontWeight: '600',
-    color: colors.gray900,
-    marginBottom: 4,
+    color: colors.onSurface,
+    marginBottom: spacing.xs,
   },
   faqAnswer: {
-    fontSize: 12,
-    color: colors.gray600,
+    ...typography.bodySmall,
+    color: colors.onSurfaceVariant,
   },
   bottomCta: {
-    marginTop: 24,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderColor: colors.gray200,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.divider,
   },
   bottomCtaTitle: {
-    fontSize: 14,
+    ...typography.titleSmall,
     fontWeight: '600',
-    color: colors.gray900,
-    marginBottom: 10,
+    color: colors.onSurface,
+    marginBottom: spacing.sm + 2,
   },
   bottomCtaRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: spacing.sm + 2,
   },
   bottomButton: {
     flex: 1,
-    borderRadius: 999,
-    paddingVertical: 10,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.sm + 2,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 48,
   },
   bottomPrimary: {
     backgroundColor: colors.primary,
+    ...elevation[2],
   },
   bottomPrimaryText: {
-    fontSize: 14,
+    ...typography.labelLarge,
     fontWeight: '600',
-    color: colors.white,
+    color: colors.onPrimary,
   },
   bottomSecondary: {
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.divider,
+    backgroundColor: colors.surface,
   },
   bottomSecondaryText: {
-    fontSize: 14,
+    ...typography.labelLarge,
     fontWeight: '600',
-    color: colors.gray800,
+    color: colors.onSurface,
   },
 });
 

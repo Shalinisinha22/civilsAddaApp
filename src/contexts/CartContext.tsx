@@ -8,6 +8,8 @@ export type CartItem = {
   price: number;
   durationMinutes: number;
   totalQuestions: number;
+  kind?: 'package' | 'test';
+  totalTests?: number;
 };
 
 type CartContextType = {

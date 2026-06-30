@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@contexts/AuthContext';
 import { api } from '@api/api';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { AppNavigationParamList } from '@navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
@@ -199,7 +200,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
             <Text style={styles.statLabel}>Completed Tests</Text>
-            <Text style={styles.statEmoji}>✅</Text>
+            <Icons.Check size={20} color={colors.success} />
           </View>
           <Text style={styles.statValue}>{stats.completedAttempts}</Text>
           <Text style={styles.statHint}>Tests finished</Text>
@@ -208,7 +209,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
             <Text style={styles.statLabel}>Total Attempts</Text>
-            <Text style={styles.statEmoji}>📊</Text>
+            <Icons.Statistics size={20} color={colors.secondary} />
           </View>
           <Text style={styles.statValue}>{stats.totalAttempts}</Text>
           <Text style={styles.statHint}>All attempts</Text>
@@ -217,7 +218,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
             <Text style={styles.statLabel}>Average Score</Text>
-            <Text style={styles.statEmoji}>🎯</Text>
+            <Icons.Target size={20} color={colors.success} />
           </View>
           <Text style={styles.statValue}>
             {stats.averageScore > 0
@@ -246,7 +247,7 @@ const DashboardScreen: React.FC = () => {
             </View>
           ) : purchased.length === 0 ? (
             <View style={styles.centerContent}>
-              <Text style={styles.emptyEmoji}>📦</Text>
+              <Icons.Book size={40} color={colors.gray400} />
               <Text style={styles.emptyText}>No tests purchased yet</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Tests')}
@@ -289,7 +290,7 @@ const DashboardScreen: React.FC = () => {
             </View>
           ) : attempts.length === 0 ? (
             <View style={styles.centerContent}>
-              <Text style={styles.emptyEmoji}>📝</Text>
+              <Icons.Document size={40} color={colors.gray400} />
               <Text style={styles.emptyText}>No attempts yet</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Tests')}
@@ -348,7 +349,10 @@ const DashboardScreen: React.FC = () => {
       <View style={styles.leaderboardCard}>
         <View style={styles.leaderboardHeader}>
           <View>
-            <Text style={styles.leaderboardTitle}>🏆 Leaderboard</Text>
+            <View style={styles.leaderboardTitleRow}>
+              <Icons.Target size={20} color={colors.primary} />
+              <Text style={styles.leaderboardTitle}> Leaderboard</Text>
+            </View>
             <Text style={styles.leaderboardSubtitle}>
               Compare your performance with other users
             </Text>
@@ -401,7 +405,7 @@ const DashboardScreen: React.FC = () => {
             ) : (
               <View style={styles.userRankCardInactive}>
                 <View style={styles.userRankRow}>
-                  <Text style={styles.userRankEmoji}>📊</Text>
+                  <Icons.Statistics size={18} color={colors.primary} />
                   <View style={styles.userRankInfo}>
                     <Text style={styles.userRankTitleInactive}>
                       Complete at least one test to appear on the leaderboard
@@ -422,10 +426,10 @@ const DashboardScreen: React.FC = () => {
                 {leaderboard.topPerformers.map((entry) => {
                   const isCurrentUser = entry.userId === user?.id;
                   const getMedal = () => {
-                    if (entry.rank === 1) return '🥇';
-                    if (entry.rank === 2) return '🥈';
-                    if (entry.rank === 3) return '🥉';
-                    return `#${entry.rank}`;
+                    if (entry.rank === 1) return <Icons.MedalGold size={20} color="#FFD700" />;
+                    if (entry.rank === 2) return <Icons.MedalSilver size={20} color="#C0C0C0" />;
+                    if (entry.rank === 3) return <Icons.MedalBronze size={20} color="#CD7F32" />;
+                    return <Text style={styles.leaderboardRankText}>#{entry.rank}</Text>;
                   };
 
                   return (
@@ -446,9 +450,7 @@ const DashboardScreen: React.FC = () => {
                             entry.rank === 3 && styles.rankBadgeBronze,
                           ]}
                         >
-                          <Text style={styles.leaderboardRankText}>
-                            {getMedal()}
-                          </Text>
+                          {getMedal()}
                         </View>
                         <View style={styles.leaderboardEntryInfo}>
                           <View style={styles.leaderboardEntryNameRow}>
@@ -492,7 +494,7 @@ const DashboardScreen: React.FC = () => {
           </View>
         ) : (
           <View style={styles.centerContent}>
-            <Text style={styles.emptyEmoji}>🏆</Text>
+            <Icons.Trophy size={40} color={colors.gray400} />
             <Text style={styles.emptyText}>
               No leaderboard data available yet
             </Text>
@@ -511,7 +513,7 @@ const DashboardScreen: React.FC = () => {
             style={styles.quickActionButton}
             onPress={() => navigation.navigate('Tests')}
           >
-            <Text style={styles.quickActionEmoji}>🔍</Text>
+            <Icons.Tests size={20} color={colors.primary} />
             <Text style={styles.quickActionTitle}>Browse Tests</Text>
             <Text style={styles.quickActionHint}>
               Explore all available tests
@@ -521,7 +523,7 @@ const DashboardScreen: React.FC = () => {
             style={styles.quickActionButton}
             onPress={() => navigation.navigate('Performance')}
           >
-            <Text style={styles.quickActionEmoji}>📈</Text>
+            <Icons.Statistics size={20} color={colors.secondary} />
             <Text style={styles.quickActionTitle}>View Performance</Text>
             <Text style={styles.quickActionHint}>Check analytics</Text>
           </TouchableOpacity>
@@ -529,7 +531,7 @@ const DashboardScreen: React.FC = () => {
             style={styles.quickActionButton}
             onPress={() => navigation.navigate('Settings')}
           >
-            <Text style={styles.quickActionEmoji}>⚙️</Text>
+            <Icons.Settings size={20} color={colors.gray600} />
             <Text style={styles.quickActionTitle}>Settings</Text>
             <Text style={styles.quickActionHint}>Manage account</Text>
           </TouchableOpacity>
@@ -599,9 +601,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.gray600,
   },
-  statEmoji: {
-    fontSize: 20,
-  },
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -645,10 +644,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.gray500,
-  },
-  emptyEmoji: {
-    fontSize: 40,
-    marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
@@ -729,11 +724,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
+  leaderboardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   leaderboardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.gray900,
-    marginBottom: 4,
   },
   leaderboardSubtitle: {
     fontSize: 12,
@@ -818,9 +817,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-  },
-  userRankEmoji: {
-    fontSize: 20,
   },
   userRankInfo: {
     flex: 1,
@@ -968,9 +964,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gray200,
     borderRadius: 8,
     backgroundColor: colors.gray50,
-  },
-  quickActionEmoji: {
-    fontSize: 20,
   },
   quickActionTitle: {
     fontSize: 14,

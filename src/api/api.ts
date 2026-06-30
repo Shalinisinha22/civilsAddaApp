@@ -68,18 +68,23 @@ const apiRequest = async <T>(
 
 export const api = {
   auth: {
-    register: (name: string, email: string, password: string) =>
+    register: (name: string, phoneNumber: string, password: string, email?: string) =>
       apiRequest<{ user: any; token: string }>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, phoneNumber, password, ...(email && { email }) }),
       }),
-    login: (email: string, password: string) =>
+    login: (phoneNumber: string, password: string) =>
       apiRequest<{ user: any; token: string }>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phoneNumber, password }),
       }),
     me: () => apiRequest<{ user: any }>('/auth/me'),
     getGoogleAuthUrl: () => apiRequest<{ authUrl: string }>('/auth/google'),
+    googleSignIn: (idToken: string) =>
+      apiRequest<{ user: any; token: string }>('/auth/android/signin', {
+        method: 'POST',
+        body: JSON.stringify({ idToken }),
+      }),
   },
   tests: {
     getAll: (params?: { category?: string; search?: string }) => {
@@ -92,30 +97,44 @@ export const api = {
     getById: (id: string) =>
       apiRequest<{ test: any; questions: any[] }>(`/tests/${id}`),
   },
+  packages: {
+    getAll: () => apiRequest<Array<any>>('/packages'),
+    getById: (id: string) => apiRequest<any>(`/packages/${id}`),
+  },
   purchases: {
-    createPaymentOrder: (testIds: string[]) =>
+    createPaymentOrder: (packageIds: string[], paymentDetails?: { amount?: number; currency?: string; receipt?: string }) =>
       apiRequest<{
-        paymentSessionId: string;
-        orderId: string;
+        order_id: string;
         amount: number;
+        currency: string;
         testIds: string[];
+        packageIds: string[];
       }>('/purchases/create-order', {
         method: 'POST',
-        body: JSON.stringify({ testIds }),
+        body: JSON.stringify({
+          packageIds,
+          ...(paymentDetails?.amount !== undefined && { amount: paymentDetails.amount }),
+          ...(paymentDetails?.currency && { currency: paymentDetails.currency }),
+          ...(paymentDetails?.receipt && { receipt: paymentDetails.receipt }),
+        }),
       }),
-    verifyPayment: (orderId: string) =>
+    verifyPayment: (paymentDetails: {
+      razorpay_order_id: string;
+      razorpay_payment_id: string;
+      razorpay_signature: string;
+    }) =>
       apiRequest<{
         orderId: string;
         paymentId: string;
         status: string;
       }>('/purchases/verify-payment', {
         method: 'POST',
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify(paymentDetails),
       }),
-    purchaseTests: (testIds: string[]) =>
+    purchaseTests: (packageIds: string[]) =>
       apiRequest<Array<any>>('/purchases', {
         method: 'POST',
-        body: JSON.stringify({ testIds }),
+        body: JSON.stringify({ packageIds }),
       }),
     getPurchasedTests: () => apiRequest<Array<any>>('/purchases'),
     checkPurchase: (testId: string) =>

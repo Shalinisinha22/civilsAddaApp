@@ -9,6 +9,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { useCart } from '@contexts/CartContext';
 import type { AppNavigationParamList } from '@navigation/types';
 
@@ -26,13 +27,13 @@ const CartScreen: React.FC = () => {
         <Text style={styles.emptyEmoji}>🛒</Text>
         <Text style={styles.emptyTitle}>Your cart is empty</Text>
         <Text style={styles.emptyText}>
-          Add some tests to your cart to begin checkout.
+          Add some tests or packages to your cart to begin checkout.
         </Text>
         <TouchableOpacity
           style={styles.emptyButton}
           onPress={() => navigation.navigate('Tests')}
         >
-          <Text style={styles.emptyButtonText}>Browse Tests →</Text>
+          <Text style={styles.emptyButtonText}>Browse Packages →</Text>
         </TouchableOpacity>
       </View>
     );
@@ -48,6 +49,9 @@ const CartScreen: React.FC = () => {
           <View style={styles.itemCard}>
             <View style={styles.itemHeader}>
               <View style={{ flex: 1 }}>
+                <Text style={styles.itemKind}>
+                  {item.kind === 'package' ? '📦 Package' : '📝 Test'}
+                </Text>
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 {item.description ? (
                   <Text style={styles.itemDescription} numberOfLines={2}>
@@ -55,11 +59,26 @@ const CartScreen: React.FC = () => {
                   </Text>
                 ) : null}
               </View>
-              <Text style={styles.itemPrice}>₹{item.price}</Text>
+              <Text style={styles.itemPrice}>
+                {item.price === 0 ? 'Free' : `₹${item.price}`}
+              </Text>
             </View>
-            <Text style={styles.itemMeta}>
-              📝 {item.totalQuestions} Q • ⏱️ {item.durationMinutes} min
-            </Text>
+            {item.kind === 'package' && item.totalTests ? (
+              <Text style={styles.itemMeta}>
+                📦 {item.totalTests} tests included
+              </Text>
+            ) : (
+              <View style={styles.itemMetaRow}>
+                <Icons.Questions size={14} color={colors.gray600} />
+                <Text style={styles.itemMeta}>
+                  {' '}{item.totalQuestions} Q •{' '}
+                </Text>
+                <Icons.Clock size={14} color={colors.gray600} />
+                <Text style={styles.itemMeta}>
+                  {' '}{item.durationMinutes} min
+                </Text>
+              </View>
+            )}
             <TouchableOpacity
               style={styles.removeButton}
               onPress={() => removeFromCart(item.id)}
@@ -79,7 +98,10 @@ const CartScreen: React.FC = () => {
           <TouchableOpacity style={styles.clearButton} onPress={clearCart}>
             <Text style={styles.clearButtonText}>Clear</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.checkoutButton} disabled>
+          <TouchableOpacity
+            style={styles.checkoutButton}
+            onPress={() => navigation.navigate('Checkout')}
+          >
             <Text style={styles.checkoutButtonText}>Proceed to Checkout</Text>
           </TouchableOpacity>
         </View>
@@ -111,6 +133,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 6,
   },
+  itemKind: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+    marginBottom: 4,
+  },
   itemTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -126,6 +154,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
     marginLeft: 8,
+  },
+  itemMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   itemMeta: {
     fontSize: 12,
@@ -200,8 +232,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyEmoji: {
-    fontSize: 40,
-    marginBottom: 8,
+    fontSize: 48,
+    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
@@ -229,5 +261,7 @@ const styles = StyleSheet.create({
 });
 
 export default CartScreen;
+
+
 
 

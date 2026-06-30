@@ -15,6 +15,7 @@ module.exports = {
           '@theme': './src/theme',
           '@i18n': './src/i18n',
           '@config': './src/config',
+          '@utils': './src/utils',
         },
       },
     ],

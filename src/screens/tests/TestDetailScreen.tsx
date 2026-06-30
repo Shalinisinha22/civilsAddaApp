@@ -16,6 +16,7 @@ import { useCart } from '@contexts/CartContext';
 import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
 import type { AppNavigationParamList } from '@navigation/types';
+import { CategoryIcon, Icons } from '@components/Icons';
 
 type TestDetailRouteProp = RouteProp<AppNavigationParamList, 'TestDetail'>;
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
@@ -51,6 +52,7 @@ const TestDetailScreen: React.FC = () => {
   const [data, setData] = useState<TestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -109,15 +111,7 @@ const TestDetailScreen: React.FC = () => {
   };
 
   const getCategoryIcon = (category?: string) => {
-    const icons: Record<string, string> = {
-      polity: '🏛️',
-      history: '📜',
-      geography: '🌎',
-      economy: '📊',
-      science: '🧪',
-      'current-affairs': '📰',
-    };
-    return icons[category || ''] || '📚';
+    return <CategoryIcon category={category} size={14} color="#1d4ed8" />;
   };
 
   const highlightColors = useMemo(
@@ -145,13 +139,14 @@ const TestDetailScreen: React.FC = () => {
       price: data.test.price || 0,
       durationMinutes: data.test.durationMinutes,
       totalQuestions: data.test.totalQuestions,
+      kind: 'test',
     });
     addToast(`${data.test.title} added to cart`, 'success');
     navigation.navigate('Tests');
   };
 
   const handleStartAttempt = async () => {
-    if (!data) return;
+    if (!data || starting) return;
 
     if (!isAuthenticated || !user?.id) {
       addToast('Please login to start a test', 'error');
@@ -165,6 +160,7 @@ const TestDetailScreen: React.FC = () => {
     }
 
     try {
+      setStarting(true);
       const response = await api.attempts.create(data.test.id);
       if (response.success && response.data) {
         const payload = response.data as any;
@@ -175,6 +171,8 @@ const TestDetailScreen: React.FC = () => {
       }
     } catch (e: any) {
       addToast(e?.message || 'Failed to start test', 'error');
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -212,7 +210,7 @@ const TestDetailScreen: React.FC = () => {
           <View style={{ flex: 1 }}>
             {test.category ? (
               <View style={styles.categoryPill}>
-                <Text style={styles.categoryIcon}>{getCategoryIcon(test.category)}</Text>
+                {getCategoryIcon(test.category)}
                 <Text style={styles.categoryText}>{formatCategory(test.category)}</Text>
               </View>
             ) : null}
@@ -230,24 +228,24 @@ const TestDetailScreen: React.FC = () => {
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>📝</Text>
+            <Icons.Questions size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>{test.totalQuestions}</Text>
             <Text style={styles.statLabel}>Questions</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>⏱️</Text>
+            <Icons.Clock size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>{test.durationMinutes}</Text>
             <Text style={styles.statLabel}>Minutes</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>💰</Text>
+            <Icons.Money size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>
               {test.price === 0 ? 'Free' : `₹${test.price}`}
             </Text>
             <Text style={styles.statLabel}>Price</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statEmoji}>🎯</Text>
+            <Icons.Target size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>
               {test.price === 0 ? 'Yes' : 'Paid'}
             </Text>
@@ -311,7 +309,10 @@ const TestDetailScreen: React.FC = () => {
         <View style={styles.actionsColumn}>
           {test.price > 0 && test.isPurchased ? (
             <View style={[styles.primaryButton, styles.primaryButtonDisabled]}>
-              <Text style={styles.primaryButtonText}>✓ Purchased</Text>
+              <View style={styles.purchasedRow}>
+                <Icons.Check size={16} color={colors.white} />
+                <Text style={styles.primaryButtonText}> Purchased</Text>
+              </View>
             </View>
           ) : null}
 
@@ -328,19 +329,28 @@ const TestDetailScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.secondaryWideButton,
-              test.price > 0 && !test.isPurchased && styles.secondaryButtonDisabled,
+              (test.price > 0 && !test.isPurchased) || starting
+                ? styles.secondaryButtonDisabled
+                : null,
             ]}
-            disabled={test.price > 0 && !test.isPurchased}
+            disabled={(test.price > 0 && !test.isPurchased) || starting}
             onPress={handleStartAttempt}
             activeOpacity={0.9}
           >
-            <Text style={styles.secondaryWideButtonText}>
-              {test.price > 0 && !test.isPurchased
-                ? 'Purchase to Start'
-                : isAuthenticated
-                ? 'Start Test Now'
-                : 'Login to Start'}
-            </Text>
+            {starting ? (
+              <View style={styles.buttonLoadingContainer}>
+                <ActivityIndicator size="small" color={colors.white} style={styles.buttonSpinner} />
+                <Text style={styles.secondaryWideButtonText}>Starting...</Text>
+              </View>
+            ) : (
+              <Text style={styles.secondaryWideButtonText}>
+                {test.price > 0 && !test.isPurchased
+                  ? 'Purchase to Start'
+                  : isAuthenticated
+                  ? 'Start Test Now'
+                  : 'Login to Start'}
+              </Text>
+            )}
           </TouchableOpacity>
 
           {test.price === 0 && (
@@ -387,7 +397,7 @@ const TestDetailScreen: React.FC = () => {
       </View>
 
       <View style={styles.helpCard}>
-        <Text style={styles.helpIcon}>💡</Text>
+        <Icons.Lightbulb size={22} color="#92400e" />
         <View style={{ flex: 1 }}>
           <Text style={styles.helpTitle}>Need help?</Text>
           <Text style={styles.helpText}>
@@ -460,10 +470,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
     borderRadius: 999,
     marginBottom: 8,
-  },
-  categoryIcon: {
-    marginRight: 6,
-    fontSize: 14,
   },
   categoryText: {
     fontSize: 13,
@@ -691,6 +697,19 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  buttonLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonSpinner: {
+    marginRight: 8,
+  },
+  purchasedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

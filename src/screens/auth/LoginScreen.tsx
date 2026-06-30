@@ -9,22 +9,22 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
 import { useNavigation } from '@react-navigation/native';
-import { api } from '@api/api';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { useTranslation } from 'react-i18next';
 
 const LoginScreen: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, register, isAuthenticated, loading: authLoading } = useAuth();
+  const { login, register, googleSignIn, isAuthenticated, loading: authLoading } = useAuth();
   const { addToast } = useToast();
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
@@ -36,13 +36,22 @@ const LoginScreen: React.FC = () => {
   }, [isAuthenticated, authLoading, navigation]);
 
   const handleSubmit = async () => {
+    if (!phoneNumber.trim()) {
+      addToast('Phone number is required', 'error');
+      return;
+    }
     setLoading(true);
     try {
       if (isLogin) {
-        await login(email.trim(), password);
+        await login(phoneNumber.trim(), password);
         addToast(t('loginSuccess') || 'Login successful! Redirecting...', 'success');
       } else {
-        await register(email.trim(), password, name);
+        if (!name.trim()) {
+          addToast('Name is required', 'error');
+          setLoading(false);
+          return;
+        }
+        await register(name.trim(), phoneNumber.trim(), password, email.trim() || undefined);
         addToast(
           t('registrationSuccess') || 'Registration successful! Redirecting...',
           'success',
@@ -60,31 +69,23 @@ const LoginScreen: React.FC = () => {
 
   const handleDemoLogin = async () => {
     setLoading(true);
-    const demoEmail = 'demo@civilsadda.com';
+    const demoPhone = '9999999999';
     const demoPassword = 'demo123';
     const demoName = 'Demo User';
 
     try {
-      // Try to login first
       try {
-        await login(demoEmail, demoPassword);
-        addToast(
-          t('demoLoginSuccess') || 'Demo login successful! Redirecting...',
-          'success',
-        );
+        await login(demoPhone, demoPassword);
+        addToast('Demo login successful! Redirecting...', 'success');
       } catch (loginError) {
-        // If login fails, try to register the demo user
-        await register(demoEmail, demoPassword, demoName);
-        addToast(
-          t('demoAccountCreated') || 'Demo account created! Redirecting...',
-          'success',
-        );
+        await register(demoName, demoPhone, demoPassword);
+        addToast('Demo account created! Redirecting...', 'success');
       }
       setTimeout(() => {
         navigation.replace('App');
       }, 500);
     } catch (error: any) {
-      addToast(error.message || t('demoLoginFailed') || 'Demo login failed', 'error');
+      addToast(error.message || 'Demo login failed', 'error');
     } finally {
       setLoading(false);
     }
@@ -93,42 +94,16 @@ const LoginScreen: React.FC = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
-      const response = await api.auth.getGoogleAuthUrl();
-      if (response.success && response.data?.authUrl) {
-        // Open Google OAuth in browser
-        const canOpen = await Linking.canOpenURL(response.data.authUrl);
-        
-        if (canOpen) {
-          await Linking.openURL(response.data.authUrl);
-          addToast(
-            t('googleSigninOpening') || 'Opening Google Sign-In in browser...',
-            'info',
-          );
-          // Note: To complete Google Sign-In, you need to:
-          // 1. Set up deep linking in your app (configure URL scheme in app.json/android/ios)
-          // 2. Handle the callback URL in your app (use Linking.addEventListener)
-          // 3. Extract the token from the callback URL
-          // 4. Send the token to your backend for verification
-          // 5. Update auth state with the received token
-        } else {
-          addToast(
-            t('googleSigninCannotOpen') || 'Cannot open browser for Google Sign-In',
-            'error',
-          );
-        }
-      } else {
-        addToast(
-          t('googleSigninFailed') || 'Failed to initiate Google Sign-In',
-          'error',
-        );
-      }
+      await googleSignIn();
+      addToast('Google Sign-In successful! Redirecting...', 'success');
+      setTimeout(() => {
+        navigation.replace('App');
+      }, 500);
     } catch (error: any) {
-      addToast(
-        error.message ||
-          t('googleSigninFailed') ||
-          'Failed to initiate Google Sign-In',
-        'error',
-      );
+      console.error('[LoginScreen] Google Sign-In error:', error);
+      console.error('[LoginScreen] Error code:', error?.code);
+      console.error('[LoginScreen] Error message:', error?.message);
+      addToast(error.message || 'Google Sign-In failed', 'error');
     } finally {
       setLoading(false);
     }
@@ -216,20 +191,31 @@ const LoginScreen: React.FC = () => {
             )}
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                {t('emailAddress') || 'Email Address'}
-              </Text>
+              <Text style={styles.label}>{t('phoneNumber') || 'Phone Number'}</Text>
               <TextInput
                 style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder={t('emailPlaceholder') || 'your.email@example.com'}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                placeholder={t('phonePlaceholder') || 'Enter your phone number'}
                 placeholderTextColor={colors.gray400}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                required
+                keyboardType="phone-pad"
               />
             </View>
+
+            {!isLogin && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>{t('emailAddress') || 'Email (optional)'}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t('emailPlaceholder') || 'your.email@example.com'}
+                  placeholderTextColor={colors.gray400}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>{t('password') || 'Password'}</Text>
@@ -240,7 +226,6 @@ const LoginScreen: React.FC = () => {
                 placeholder={t('passwordPlaceholder') || '••••••••'}
                 placeholderTextColor={colors.gray400}
                 secureTextEntry
-                required
               />
               {!isLogin && (
                 <Text style={styles.helperText}>
@@ -272,46 +257,18 @@ const LoginScreen: React.FC = () => {
               <Text style={styles.googleIcon}>G</Text>
               <Text style={styles.googleButtonText}>
                 {loading
-                  ? t('loading') || 'Loading...'
+                  ? t('signingIn') || 'Signing in...'
                   : t('continueWithGoogle') || 'Continue with Google'}
               </Text>
             </TouchableOpacity>
 
             {/* Demo Login Section */}
-            <View style={styles.divider}>
+            {/* <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or</Text>
               <View style={styles.dividerLine} />
-            </View>
+            </View> */}
 
-            <View style={styles.demoContainer}>
-              <Text style={styles.demoTitle}>🔐 Demo Credentials</Text>
-              <View style={styles.demoCredentials}>
-                <View style={styles.demoRow}>
-                  <Text style={styles.demoLabel}>Email:</Text>
-                  <Text style={styles.demoValue}>demo@civilsadda.com</Text>
-                </View>
-                <View style={styles.demoRow}>
-                  <Text style={styles.demoLabel}>Password:</Text>
-                  <Text style={styles.demoValue}>demo123</Text>
-                </View>
-              </View>
-              <Text style={styles.demoHint}>
-                💡 You can also use these credentials to login manually
-              </Text>
-              <TouchableOpacity
-                style={styles.demoButton}
-                onPress={handleDemoLogin}
-                disabled={loading}
-              >
-                <Text style={styles.demoButtonText}>
-                  {loading ? 'Loading...' : '🚀 Try Demo Login'}
-                </Text>
-              </TouchableOpacity>
-              <Text style={styles.demoSubtext}>
-                Click above to automatically login with demo account
-              </Text>
-            </View>
 
             {/* Info Card */}
             <View style={styles.infoCard}>

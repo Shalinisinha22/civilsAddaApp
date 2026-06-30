@@ -7,17 +7,16 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
 const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { addToast } = useToast();
-  const navigation = useNavigation<any>();
   const [name, setName] = useState(user?.name || '');
   const [loading, setLoading] = useState(false);
   const { t, i18n } = useTranslation();
@@ -63,10 +62,8 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
-  const handleLogout = () => {
-    logout();
-    addToast(t('logout') + ' ' + (t('success') || 'successful'), 'success');
-    navigation.replace('Login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -170,9 +167,12 @@ const SettingsScreen: React.FC = () => {
 
         {/* Data Info */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>
-            📊 {t('aboutYourData') || 'About Your Data'}
-          </Text>
+          <View style={styles.infoTitleRow}>
+            <Icons.Statistics size={18} color={colors.primary} />
+            <Text style={styles.infoTitle}>
+              {' '}{t('aboutYourData') || 'About Your Data'}
+            </Text>
+          </View>
           <Text style={styles.infoText}>
             {t('aboutYourDataText') ||
               'All your data (tests, attempts, purchases) is stored locally in your device. This means:'}
@@ -314,6 +314,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1E3A8A',
     marginBottom: 12,
+  },
+  infoTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   infoList: {
     gap: 4,

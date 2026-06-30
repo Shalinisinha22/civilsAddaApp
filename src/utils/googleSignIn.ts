@@ -1,103 +1,66 @@
-import { Linking } from 'react-native';
-import { api } from '@api/api';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GOOGLE_WEB_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '@config/env';
 
-/**
- * Google Sign-In for React Native
- * Opens Google OAuth URL in browser and handles callback
- */
-export const handleGoogleSignIn = async (): Promise<{
-  success: boolean;
-  token?: string;
-  user?: any;
-  error?: string;
+export const configureGoogleSignIn = () => {
+  console.log('[googleSignIn] Configuring with webClientId:', GOOGLE_WEB_CLIENT_ID);
+  GoogleSignin.configure({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    offlineAccess: false,
+  });
+};
+
+export const signInWithGoogle = async (): Promise<{
+  idToken: string;
+  user: { id: string; name: string; email: string; photo: string | null };
 }> => {
   try {
-    // Get Google OAuth URL from backend
-    const response = await api.auth.getGoogleAuthUrl();
-    
-    if (!response.success || !response.data?.authUrl) {
-      return {
-        success: false,
-        error: 'Failed to get Google Sign-In URL',
-      };
+    const playServices = await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    console.log('[signInWithGoogle] hasPlayServices:', playServices);
+
+    // Check if already signed in
+    const isSignedIn = await GoogleSignin.isSignedIn();
+    console.log('[signInWithGoogle] isSignedIn:', isSignedIn);
+    if (isSignedIn) {
+      const currentUser = await GoogleSignin.getCurrentUser();
+      console.log('[signInWithGoogle] currentUser:', currentUser ? 'exists' : 'null');
+      await GoogleSignin.signOut();
     }
 
-    const authUrl = response.data.authUrl;
-    
-    // Open browser for OAuth
-    const canOpen = await Linking.canOpenURL(authUrl);
-    
-    if (!canOpen) {
-      return {
-        success: false,
-        error: 'Cannot open browser for Google Sign-In',
-      };
+    const userInfo = await GoogleSignin.signIn();
+    console.log('[signInWithGoogle] signIn success, user keys:', Object.keys(userInfo));
+    console.log('[signInWithGoogle] has idToken:', !!userInfo.idToken);
+    if (!userInfo.idToken) {
+      throw new Error('No ID token returned from Google Sign-In');
     }
-
-    // Open the OAuth URL
-    await Linking.openURL(authUrl);
-    
-    // Note: In a production app, you would:
-    // 1. Set up deep linking to handle the callback
-    // 2. Extract the token from the callback URL
-    // 3. Send it to your backend for verification
-    // 4. Store the token and update auth state
-    
     return {
-      success: true,
-      error: 'Please complete sign-in in the browser. Deep linking will be handled automatically.',
+      idToken: userInfo.idToken,
+      user: {
+        id: userInfo.user.id,
+        name: userInfo.user.name ?? '',
+        email: userInfo.user.email ?? '',
+        photo: userInfo.user.photo ?? null,
+      },
     };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Google Sign-In failed',
-    };
+  } catch (err: any) {
+    const code = err.code;
+    let codeName = 'UNKNOWN';
+    for (const [key, val] of Object.entries(statusCodes)) {
+      if (val === code) { codeName = key; break; }
+    }
+    console.error('[signInWithGoogle] signIn error:', err.message);
+    console.error('[signInWithGoogle] error code:', code, `(${codeName})`);
+    console.error('[signInWithGoogle] error stack:', err.stack);
+    throw err;
   }
 };
 
-/**
- * Handle Google OAuth callback
- * This should be called when the app receives a deep link from Google OAuth
- */
-export const handleGoogleCallback = async (callbackUrl: string): Promise<{
-  success: boolean;
-  token?: string;
-  user?: any;
-  error?: string;
-}> => {
+export const signOutFromGoogle = async () => {
   try {
-    // Extract token from callback URL
-    const url = new URL(callbackUrl);
-    const token = url.searchParams.get('token');
-    const error = url.searchParams.get('error');
-
-    if (error) {
-      return {
-        success: false,
-        error: decodeURIComponent(error),
-      };
-    }
-
-    if (!token) {
-      return {
-        success: false,
-        error: 'No token received from Google Sign-In',
-      };
-    }
-
-    // Verify token with backend and get user info
-    // This would typically be done via your backend API
-    // For now, we'll return the token
-    
-    return {
-      success: true,
-      token,
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Failed to process Google callback',
-    };
+    await GoogleSignin.signOut();
+  } catch {
+    // ignore
   }
 };
 
+export { statusCodes };

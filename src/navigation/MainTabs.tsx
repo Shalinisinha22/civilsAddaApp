@@ -7,6 +7,7 @@ import TestsScreen from '@screens/tests/TestsScreen';
 import AttemptsScreen from '@screens/dashboard/AttemptsScreen';
 import CartScreen from '@screens/cart/CartScreen';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 import { useTranslation } from 'react-i18next';
 import { TabParamList } from './types';
 import { useCart } from '@contexts/CartContext';
@@ -22,25 +23,21 @@ const TabIcon: React.FC<{ name: string; focused: boolean; color: string }> = ({
   const getIcon = () => {
     switch (name) {
       case 'Home':
-        return '🏠';
+        return <Icons.Home size={24} color={color} />;
       case 'Tests':
-        return '📚';
+        return <Icons.Tests size={24} color={color} />;
       case 'Cart':
-        return '🛒';
+        return <Icons.Cart size={24} color={color} />;
       case 'Attempts':
-        return '📝';
+        return <Icons.Attempts size={24} color={color} />;
       case 'Dashboard':
-        return '📊';
+        return <Icons.Dashboard size={24} color={color} />;
       default:
-        return '•';
+        return <Icons.Book size={24} color={color} />;
     }
   };
 
-  return (
-    <View style={styles.iconContainer}>
-      <Text style={[styles.icon, { color }]}>{getIcon()}</Text>
-    </View>
-  );
+  return <View style={styles.iconContainer}>{getIcon()}</View>;
 };
 
 const MainTabs: React.FC = () => {
@@ -98,9 +95,6 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  icon: {
-    fontSize: 24,
   },
 });
 

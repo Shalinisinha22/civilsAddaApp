@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api, setToken as apiSetToken, removeToken as apiRemoveToken } from '@api/api';
+import { configureGoogleSignIn, signInWithGoogle, signOutFromGoogle } from '@utils/googleSignIn';
 
 type User = {
   id: string;
@@ -11,9 +12,10 @@ type AuthContextValue = {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  login: (phoneNumber: string, password: string) => Promise<void>;
+  register: (name: string, phoneNumber: string, password: string, email?: string) => Promise<void>;
   logout: () => Promise<void>;
+  googleSignIn: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -23,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    configureGoogleSignIn();
     const init = async () => {
       try {
         const res = await api.auth.me();
@@ -38,8 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     init();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const res = await api.auth.login(email, password);
+  const login = async (phoneNumber: string, password: string) => {
+    const res = await api.auth.login(phoneNumber, password);
     if (res.success && res.data?.token && res.data.user) {
       await apiSetToken(res.data.token);
       setUser(res.data.user);
@@ -48,8 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (email: string, password: string, name: string = '') => {
-    const res = await api.auth.register(name, email, password);
+  const register = async (name: string, phoneNumber: string, password: string, email?: string) => {
+    const res = await api.auth.register(name, phoneNumber, password, email);
     if (res.success && res.data?.token && res.data.user) {
       await apiSetToken(res.data.token);
       setUser(res.data.user);
@@ -59,8 +62,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    await signOutFromGoogle();
     await apiRemoveToken();
     setUser(null);
+  };
+
+  const googleSignIn = async () => {
+    try {
+      const { idToken } = await signInWithGoogle();
+      console.log('[googleSignIn] Got idToken, sending to backend...');
+      const res = await api.auth.googleSignIn(idToken);
+      console.log('[googleSignIn] Backend response:', JSON.stringify(res));
+      if (res.success && res.data?.token && res.data.user) {
+        await apiSetToken(res.data.token);
+        setUser(res.data.user);
+      } else {
+        await signOutFromGoogle();
+        throw new Error(res.message || 'Google Sign-In failed');
+      }
+    } catch (err) {
+      console.error('[googleSignIn] Full error:', err);
+      console.error('[googleSignIn] Error code:', (err as any)?.code);
+      throw err;
+    }
   };
 
   return (
@@ -72,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
+        googleSignIn,
       }}
     >
       {children}

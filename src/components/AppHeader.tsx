@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
-import { colors } from '@theme/colors';
+import { colors, elevation, typography, spacing } from '@theme/colors';
 import { useTranslation } from 'react-i18next';
 
 type AppHeaderProps = {
@@ -61,52 +61,75 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray200,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    backgroundColor: colors.surface,
+    ...(Platform.OS === 'android' ? elevation[2] : {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.divider,
+    }),
+    ...(Platform.OS === 'ios' && {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    }),
   },
   left: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   backButton: {
-    marginRight: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    marginRight: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+    minWidth: 40,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backText: {
-    fontSize: 24,
-    color: colors.gray900,
+    fontSize: 28,
+    color: colors.onSurface,
+    fontWeight: '300',
   },
   menuButton: {
-    marginRight: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    marginRight: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    borderRadius: 20,
+    minWidth: 40,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuIcon: {
-    fontSize: 20,
-    color: colors.gray900,
+    fontSize: 24,
+    color: colors.onSurface,
+    fontWeight: '300',
   },
   logoBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
+    ...elevation[2],
   },
   logoText: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: colors.onPrimary,
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   title: {
-    marginLeft: 10,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.gray900,
+    marginLeft: spacing.sm,
+    ...typography.titleLarge,
+    color: colors.onSurface,
+    flex: 1,
   },
 });
 
