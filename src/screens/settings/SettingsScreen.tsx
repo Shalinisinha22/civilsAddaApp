@@ -6,6 +6,7 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
@@ -15,10 +16,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
 const SettingsScreen: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const { addToast } = useToast();
   const [name, setName] = useState(user?.name || '');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [saving, setSaving] = useState(false);
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState<'en' | 'hi'>('en');
 
@@ -38,6 +41,14 @@ const SettingsScreen: React.FC = () => {
     loadLanguage();
   }, [i18n.language]);
 
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+    }
+  }, [user]);
+
   const handleLanguageChange = async (lng: 'en' | 'hi') => {
     setLanguage(lng);
     try {
@@ -49,17 +60,24 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleUpdateName = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       addToast(t('nameCannotBeEmpty') || 'Name cannot be empty', 'error');
       return;
     }
-    // In a real app, this would update the user in the backend
-    // For now, we'll just show a message
-    addToast(
-      t('nameUpdated') || 'Name updated successfully! (Changes saved locally)',
-      'success',
-    );
+    setSaving(true);
+    try {
+      await updateProfile({
+        name: name.trim(),
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+      });
+      addToast(t('profileUpdated') || 'Profile updated successfully!', 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to update profile', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -82,38 +100,51 @@ const SettingsScreen: React.FC = () => {
             {t('profileInformation') || 'Profile Information'}
           </Text>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('emailAddress') || 'Email Address'}</Text>
+            <Text style={styles.label}>{t('fullName') || 'Full Name'}</Text>
             <TextInput
-              style={[styles.input, styles.inputDisabled]}
-              value={user?.email || ''}
-              editable={false}
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder={t('enterYourName') || 'Enter your name'}
               placeholderTextColor={colors.gray400}
             />
-            <Text style={styles.helperText}>
-              {t('emailImmutable') || 'Email cannot be changed'}
-            </Text>
           </View>
           <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('fullName') || 'Full Name'}</Text>
-            <View style={styles.nameRow}>
-              <TextInput
-                style={[styles.input, styles.nameInput]}
-                value={name}
-                onChangeText={setName}
-                placeholder={t('enterYourName') || 'Enter your name'}
-                placeholderTextColor={colors.gray400}
-              />
-              <TouchableOpacity
-                style={styles.updateButton}
-                onPress={handleUpdateName}
-                disabled={loading}
-              >
-                <Text style={styles.updateButtonText}>
-                  {t('updateName') || 'Update Name'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.label}>{t('emailAddress') || 'Email Address'}</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder={t('emailPlaceholder') || 'your.email@example.com'}
+              placeholderTextColor={colors.gray400}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
           </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('phoneNumber') || 'Mobile Number'}</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder={t('phonePlaceholder') || 'Enter your mobile number'}
+              placeholderTextColor={colors.gray400}
+              keyboardType="phone-pad"
+            />
+          </View>
+          <TouchableOpacity
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Text style={styles.saveButtonText}>
+                {t('saveChanges') || 'Save Changes'}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Account Actions */}
@@ -122,7 +153,7 @@ const SettingsScreen: React.FC = () => {
             {t('accountActions') || 'Account Actions'}
           </Text>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>🚪 {t('logout')}</Text>
+            <Icons.Logout size={16} color={colors.danger} /><Text style={styles.logoutButtonText}> {t('logout')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -162,37 +193,6 @@ const SettingsScreen: React.FC = () => {
                 {t('hindi')}
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Data Info */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoTitleRow}>
-            <Icons.Statistics size={18} color={colors.primary} />
-            <Text style={styles.infoTitle}>
-              {' '}{t('aboutYourData') || 'About Your Data'}
-            </Text>
-          </View>
-          <Text style={styles.infoText}>
-            {t('aboutYourDataText') ||
-              'All your data (tests, attempts, purchases) is stored locally in your device. This means:'}
-          </Text>
-          <View style={styles.infoList}>
-            <Text style={styles.infoItem}>
-              •{' '}
-              {t('aboutYourDataPoint1') ||
-                'Data is private to your device'}
-            </Text>
-            <Text style={styles.infoItem}>
-              •{' '}
-              {t('aboutYourDataPoint2') ||
-                'Clearing app data will reset everything'}
-            </Text>
-            <Text style={styles.infoItem}>
-              •{' '}
-              {t('aboutYourDataPoint3') ||
-                'Data is not synced across devices'}
-            </Text>
           </View>
         </View>
       </View>
@@ -256,32 +256,19 @@ const styles = StyleSheet.create({
     color: colors.gray900,
     backgroundColor: colors.white,
   },
-  inputDisabled: {
-    backgroundColor: colors.gray50,
-    color: colors.gray600,
-  },
-  helperText: {
-    fontSize: 12,
-    color: colors.gray500,
-    marginTop: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  nameInput: {
-    flex: 1,
-  },
-  updateButton: {
+  saveButton: {
     backgroundColor: colors.primary,
     borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    justifyContent: 'center',
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
   },
-  updateButtonText: {
+  saveButtonDisabled: {
+    opacity: 0.7,
+  },
+  saveButtonText: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   logoutButton: {
@@ -296,36 +283,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 16,
     fontWeight: '600',
-  },
-  infoCard: {
-    backgroundColor: '#DBEAFE',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 12,
-    padding: 16,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E40AF',
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#1E3A8A',
-    marginBottom: 12,
-  },
-  infoTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  infoList: {
-    gap: 4,
-  },
-  infoItem: {
-    fontSize: 14,
-    color: '#1E3A8A',
   },
   languageRow: {
     flexDirection: 'row',

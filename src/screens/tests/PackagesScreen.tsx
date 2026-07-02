@@ -28,6 +28,7 @@ type PackageTest = {
   durationMinutes?: number;
   totalQuestions?: number;
   isPurchased?: boolean;
+  isDemo?: boolean;
 };
 
 type Package = {
@@ -116,11 +117,11 @@ const PackagesScreen: React.FC = () => {
             ) : null}
             <View style={styles.cardTags}>
               <View style={styles.tag}>
-                <Text style={styles.tagText}>📦 {pkg.totalTests} tests</Text>
+                <Text style={styles.tagText}>{pkg.totalTests} tests</Text>
               </View>
               {pkg.isFeatured ? (
                 <View style={[styles.tag, styles.featuredTag]}>
-                  <Text style={styles.featuredTagText}>⭐ Featured</Text>
+                  <Text style={styles.featuredTagText}>Featured</Text>
                 </View>
               ) : null}
             </View>
@@ -163,10 +164,9 @@ const PackagesScreen: React.FC = () => {
             </TouchableOpacity>
 
             {pkg.isPurchased ? (
-              <View style={styles.purchasedBadge}>
-                <Icons.Check size={16} color={colors.white} />
-                <Text style={styles.purchasedBadgeText}> Purchased</Text>
-              </View>
+              <TouchableOpacity style={styles.openBtn} onPress={() => setSelectedPackage(pkg)}>
+                <Text style={styles.openBtnText}>Open</Text>
+              </TouchableOpacity>
             ) : pkg.price > 0 ? (
               <TouchableOpacity
                 style={[styles.addToCartButton, isAdding && styles.addToCartButtonDisabled]}
@@ -248,9 +248,12 @@ const PackagesScreen: React.FC = () => {
                         {selectedPackage.price > 0 ? ` • ₹${selectedPackage.price}` : ' • Free'}
                       </Text>
                       {selectedPackage.isPurchased ? (
-                        <View style={styles.modalPurchasedBadge}>
-                          <Text style={styles.modalPurchasedBadgeText}>✓ Purchased</Text>
-                        </View>
+                        <TouchableOpacity
+                          style={styles.modalOpenBtn}
+                          onPress={() => { setSelectedPackage(null); /* user can see tests below */ }}
+                        >
+                          <Text style={styles.modalOpenBtnText}>Open</Text>
+                        </TouchableOpacity>
                       ) : selectedPackage.price > 0 ? (
                         <TouchableOpacity
                           style={styles.modalAddButton}
@@ -285,11 +288,11 @@ const PackagesScreen: React.FC = () => {
                         <View style={{ flex: 1 }}>
                           <View style={styles.testItemTitleRow}>
                             <Text style={styles.testItemTitle}>{test.title}</Text>
-                            {selectedPackage.isPurchased && (
+                            {selectedPackage.isPurchased ? (
                               <View style={styles.includedBadge}>
                                 <Text style={styles.includedBadgeText}>Included</Text>
                               </View>
-                            )}
+                            ) : null}
                           </View>
                           <View style={styles.testItemMeta}>
                             {test.durationMinutes ? (
@@ -306,25 +309,15 @@ const PackagesScreen: React.FC = () => {
                         </View>
                       </View>
                       <View style={styles.testItemActions}>
-                        {(selectedPackage.isPurchased || test.isPurchased) && (
+                        {(selectedPackage.isPurchased || test.isPurchased || test.isDemo) && (
                           <TouchableOpacity
                             style={styles.startTestButton}
-                            onPress={async () => {
-                              try {
-                                const res = await api.attempts.create(test.id);
-                                if (res.success && res.data) {
-                                  navigation.navigate('TestAttempt', {
-                                    testId: test.id,
-                                    attemptId: (res.data as any).attemptId,
-                                  });
-                                }
-                              } catch (e: any) {
-                                addToast(e?.message || 'Failed to start test', 'error');
-                              }
+                            onPress={() => {
                               setSelectedPackage(null);
+                              navigation.navigate('TestDetail', { testId: test.id });
                             }}
                           >
-                            <Text style={styles.startTestButtonText}>Start</Text>
+                            <Text style={styles.startTestButtonText}>Open</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -536,16 +529,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.white,
   },
-  purchasedBadge: {
+  openBtn: {
     flex: 1,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
     backgroundColor: '#059669',
   },
-  purchasedBadgeText: {
+  openBtnText: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.white,
@@ -604,16 +596,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#94a3b8',
   },
-  modalPurchasedBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  modalOpenBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: 'rgba(5,150,105,0.2)',
+    backgroundColor: '#059669',
   },
-  modalPurchasedBadgeText: {
+  modalOpenBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#34d399',
+    color: '#ffffff',
   },
   modalAddButton: {
     paddingHorizontal: 14,

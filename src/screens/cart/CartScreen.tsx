@@ -24,7 +24,7 @@ const CartScreen: React.FC = () => {
   if (items.length === 0) {
     return (
       <View style={styles.emptyRoot}>
-        <Text style={styles.emptyEmoji}>🛒</Text>
+        <Icons.Cart size={48} color={colors.gray400} />
         <Text style={styles.emptyTitle}>Your cart is empty</Text>
         <Text style={styles.emptyText}>
           Add some tests or packages to your cart to begin checkout.
@@ -50,7 +50,7 @@ const CartScreen: React.FC = () => {
             <View style={styles.itemHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemKind}>
-                  {item.kind === 'package' ? '📦 Package' : '📝 Test'}
+                  {item.kind === 'package' ? 'Package' : 'Test'}
                 </Text>
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 {item.description ? (
@@ -65,7 +65,7 @@ const CartScreen: React.FC = () => {
             </View>
             {item.kind === 'package' && item.totalTests ? (
               <Text style={styles.itemMeta}>
-                📦 {item.totalTests} tests included
+                {item.totalTests} tests included
               </Text>
             ) : (
               <View style={styles.itemMetaRow}>

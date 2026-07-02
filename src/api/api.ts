@@ -67,6 +67,16 @@ const apiRequest = async <T>(
 };
 
 export const api = {
+  banners: {
+    getAll: (platform?: string) => {
+      const query = platform ? `?platform=${platform}` : '';
+      return apiRequest<Array<any>>(`/banners${query}`);
+    },
+  },
+  series: {
+    getAll: () => apiRequest<Array<any>>('/series'),
+    getById: (id: string) => apiRequest<any>(`/series/${id}`),
+  },
   auth: {
     register: (name: string, phoneNumber: string, password: string, email?: string) =>
       apiRequest<{ user: any; token: string }>('/auth/register', {
@@ -85,6 +95,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ idToken }),
       }),
+    updateProfile: (data: { name?: string; email?: string; phone?: string }) =>
+      apiRequest<{ user: any }>('/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
   },
   tests: {
     getAll: (params?: { category?: string; search?: string }) => {
@@ -96,9 +111,10 @@ export const api = {
     },
     getById: (id: string) =>
       apiRequest<{ test: any; questions: any[] }>(`/tests/${id}`),
+    getDemoTests: () => apiRequest<Array<any>>('/tests/demo'),
   },
   packages: {
-    getAll: () => apiRequest<Array<any>>('/packages'),
+    getAll: (seriesId?: string) => apiRequest<Array<any>>(`/packages${seriesId ? `?series=${seriesId}` : ''}`),
     getById: (id: string) => apiRequest<any>(`/packages/${id}`),
   },
   purchases: {

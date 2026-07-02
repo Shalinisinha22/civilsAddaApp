@@ -29,7 +29,7 @@ export const Icon: React.FC<IconProps & { library?: 'material' | 'materialCommun
   }
 };
 
-// Category icons
+  // Category icons
 export const CategoryIcon: React.FC<{ category?: string; size?: number; color?: string }> = ({
   category,
   size = 24,
@@ -42,6 +42,8 @@ export const CategoryIcon: React.FC<{ category?: string; size?: number; color?: 
     economy: { name: 'trending-up', library: 'material' },
     science: { name: 'science', library: 'material' },
     'current-affairs': { name: 'newspaper', library: 'materialCommunity' },
+    'previous-year-papers': { name: 'library-books', library: 'material' },
+    uncategorized: { name: 'category', library: 'material' },
   };
 
   const icon = iconMap[category || ''] || { name: 'menu-book', library: 'material' };
@@ -74,5 +76,14 @@ export const Icons = {
   MedalSilver: (props: { size?: number; color?: string }) => <Icon name="workspace-premium" {...props} library="material" />,
   MedalBronze: (props: { size?: number; color?: string }) => <Icon name="military-tech" {...props} library="material" />,
   Trophy: (props: { size?: number; color?: string }) => <Icon name="emoji-events" {...props} library="material" />,
+  Bookmark: (props: { size?: number; color?: string }) => <Icon name="collections-bookmark" {...props} library="material" />,
+  Inventory: (props: { size?: number; color?: string }) => <Icon name="widgets" {...props} library="material" />,
+  Lock: (props: { size?: number; color?: string }) => <Icon name="lock" {...props} library="material" />,
+  Language: (props: { size?: number; color?: string }) => <Icon name="language" {...props} library="ionicons" />,
+  Assignment: (props: { size?: number; color?: string }) => <Icon name="assignment" {...props} library="material" />,
+  Close: (props: { size?: number; color?: string }) => <Icon name="close" {...props} library="material" />,
+  Logout: (props: { size?: number; color?: string }) => <Icon name="logout" {...props} library="material" />,
+  School: (props: { size?: number; color?: string }) => <Icon name="school" {...props} library="material" />,
+  ShowChart: (props: { size?: number; color?: string }) => <Icon name="show-chart" {...props} library="material" />,
 };
 

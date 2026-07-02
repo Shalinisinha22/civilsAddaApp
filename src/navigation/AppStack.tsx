@@ -6,6 +6,8 @@ import TestAttemptScreen from '@screens/tests/TestAttemptScreen';
 import CheckoutScreen from '@screens/cart/CheckoutScreen';
 import PaymentSuccessScreen from '@screens/payment/PaymentSuccessScreen';
 import PaymentFailureScreen from '@screens/payment/PaymentFailureScreen';
+import PackageDetailScreen from '@screens/tests/PackageDetailScreen';
+import CategoryTestsScreen from '@screens/tests/CategoryTestsScreen';
 import { StackParamList } from './types';
 
 const Stack = createNativeStackNavigator<StackParamList & { MainDrawer: undefined }>();
@@ -23,6 +25,8 @@ const AppStack: React.FC = () => {
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
       <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
+      <Stack.Screen name="PackageDetail" component={PackageDetailScreen} />
+      <Stack.Screen name="CategoryTests" component={CategoryTestsScreen} />
     </Stack.Navigator>
   );
 };

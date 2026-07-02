@@ -9,12 +9,13 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, elevation, typography, spacing, borderRadius } from '@theme/colors';
+import { colors, typography, spacing, borderRadius } from '@theme/colors';
 import { api } from '@api/api';
 import { useCart } from '@contexts/CartContext';
 import { useToast } from '@contexts/ToastContext';
 import type { AppNavigationParamList } from '@navigation/types';
 import { Icons } from '@components/Icons';
+import BannerCarousel from '@components/BannerCarousel';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 
@@ -27,21 +28,32 @@ type PackageSummary = {
   isPurchased?: boolean;
 };
 
+type Series = {
+  id: string;
+  name: string;
+  description: string;
+  packages: { id: string; name: string; price: number; totalTests: number }[];
+};
+
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { addToCart } = useCart();
   const { addToast } = useToast();
 
   const [packages, setPackages] = useState<PackageSummary[]>([]);
+  const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await api.packages.getAll();
-        if (res.success && res.data) {
-          const mapped: PackageSummary[] = (res.data as any[]).map((pkg) => ({
+        const [pkgRes, seriesRes] = await Promise.allSettled([
+          api.packages.getAll(),
+          api.series.getAll(),
+        ]);
+        if (pkgRes.status === 'fulfilled' && pkgRes.value.success && pkgRes.value.data) {
+          const mapped: PackageSummary[] = (pkgRes.value.data as any[]).map((pkg) => ({
             id: pkg.id || pkg._id,
             name: pkg.name,
             description: pkg.description || '',
@@ -50,6 +62,9 @@ const HomeScreen: React.FC = () => {
             isPurchased: !!pkg.isPurchased,
           }));
           setPackages(mapped);
+        }
+        if (seriesRes.status === 'fulfilled' && seriesRes.value.success && seriesRes.value.data) {
+          setSeriesList(seriesRes.value.data as Series[]);
         }
       } finally {
         setLoading(false);
@@ -77,31 +92,8 @@ const HomeScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-      {/* Hero section */}
-      <View style={styles.hero}>
-        <View style={styles.heroBadge}>
-          <Text style={styles.heroBadgeText}>Mock Tests Platform</Text>
-        </View>
-        <Text style={styles.heroTitle}>Ace Your Competitive Exams</Text>
-        <Text style={styles.heroSubtitle}>
-          Practice with curated mock tests designed by experts. Track your
-          progress and excel in your preparation.
-        </Text>
-        <View style={styles.heroButtonsRow}>
-          <TouchableOpacity
-            style={[styles.heroButton, styles.heroPrimaryButton]}
-            onPress={() => navigation.navigate('Tests')}
-          >
-            <Text style={styles.heroPrimaryText}>Browse Tests</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.heroButton, styles.heroSecondaryButton]}
-            onPress={() => navigation.navigate('Dashboard')}
-          >
-            <Text style={styles.heroSecondaryText}>View Dashboard</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Banner carousel */}
+      <BannerCarousel />
 
       {/* Stats strip */}
       <View style={styles.statsRow}>
@@ -123,20 +115,32 @@ const HomeScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Explore by Category */}
+      {/* Series */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Explore by Category</Text>
+        <Text style={styles.sectionTitle}>Series</Text>
         <Text style={styles.sectionSubtitle}>
-          Choose from a wide range of subjects and topics to focus your preparation.
+          Choose your exam and access curated test packages designed for your preparation.
         </Text>
         <View style={styles.categoryGrid}>
-          {['Polity', 'History', 'Economy', 'Geography', 'Science', 'Reasoning'].map(
-            (name) => (
-              <View key={name} style={styles.categoryCard}>
-                <Icons.Book size={22} color={colors.primary} />
-                <Text style={styles.categoryName}>{name}</Text>
-              </View>
-            ),
+          {seriesList.length === 0 ? (
+            <Text style={styles.emptySeriesText}>Loading exams...</Text>
+          ) : (
+            seriesList.map((series) => (
+              <TouchableOpacity
+                key={series.id}
+                style={styles.seriesCard}
+                onPress={() => navigation.navigate('Tests', { seriesId: series.id, seriesName: series.name })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.seriesIconWrap}>
+                  <Icons.Bookmark size={22} color={colors.primary} />
+                </View>
+                <Text style={styles.categoryName}>{series.name}</Text>
+                <Text style={styles.seriesPkgCount}>
+                  {series.packages.length} package{series.packages.length !== 1 ? 's' : ''}
+                </Text>
+              </TouchableOpacity>
+            ))
           )}
         </View>
       </View>
@@ -162,7 +166,7 @@ const HomeScreen: React.FC = () => {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{pkg.name}</Text>
                   <View style={styles.packageTag}>
-                    <Text style={styles.packageTagText}>📦 {pkg.totalTests} tests</Text>
+                    <Text style={styles.packageTagText}>{pkg.totalTests} tests</Text>
                   </View>
                 </View>
                 <View
@@ -197,18 +201,20 @@ const HomeScreen: React.FC = () => {
                 <TouchableOpacity
                   style={[styles.cardButton, styles.viewButton]}
                   onPress={() =>
-                    navigation.navigate('Tests')
+                    navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })
                   }
                 >
                   <Text style={styles.viewButtonText}>View Details</Text>
                 </TouchableOpacity>
                 {pkg.isPurchased ? (
-                  <View style={[styles.cardButton, styles.purchasedButton]}>
-                    <View style={styles.purchasedRow}>
-                    <Icons.Check size={14} color={colors.white} />
-                    <Text style={styles.purchasedText}> Purchased</Text>
-                  </View>
-                  </View>
+                  <TouchableOpacity
+                    style={[styles.cardButton, styles.openButton]}
+                    onPress={() =>
+                      navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })
+                    }
+                  >
+                    <Text style={styles.openButtonText}>Open</Text>
+                  </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
                     style={[styles.cardButton, styles.addToCartButton]}
@@ -244,22 +250,6 @@ const HomeScreen: React.FC = () => {
         </View>
       </View>
 
-
-      {/* Trusted by learners from */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Trusted by learners from</Text>
-        <Text style={styles.sectionSubtitle}>
-          Join thousands of aspirants preparing for competitive exams.
-        </Text>
-        <View style={styles.partnerRow}>
-          {['A', 'B', 'C', 'D', 'E'].map((p) => (
-            <View key={p} style={styles.partnerCard}>
-              <Text style={styles.partnerLetter}>{p}</Text>
-              <Text style={styles.partnerLabel}>Partner {p}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
 
       {/* FAQs */}
       <View style={styles.section}>
@@ -314,70 +304,7 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing.xl,
   },
-  hero: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
-    backgroundColor: colors.primary,
-    borderBottomLeftRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.xl,
-  },
-  heroBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: spacing.sm + 2,
-  },
-  heroBadgeText: {
-    ...typography.labelSmall,
-    color: colors.onPrimary,
-    opacity: 0.9,
-  },
-  heroTitle: {
-    ...typography.headlineMedium,
-    color: colors.onPrimary,
-    marginBottom: spacing.sm,
-    fontWeight: '600',
-  },
-  heroSubtitle: {
-    ...typography.bodyMedium,
-    color: colors.onPrimary,
-    marginBottom: spacing.lg,
-    opacity: 0.9,
-  },
-  heroButtonsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  heroButton: {
-    flex: 1,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  heroPrimaryButton: {
-    backgroundColor: colors.onPrimary,
-    ...elevation[2],
-  },
-  heroPrimaryText: {
-    ...typography.labelLarge,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  heroSecondaryButton: {
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.5)',
-    backgroundColor: 'transparent',
-  },
-  heroSecondaryText: {
-    ...typography.labelLarge,
-    color: colors.onPrimary,
-    fontWeight: '600',
-  },
+
   trendingHeaderRow: {
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
@@ -402,7 +329,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     backgroundColor: colors.surface,
     alignItems: 'center',
-    ...elevation[1],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   loadingText: {
     marginTop: spacing.sm,
@@ -418,7 +346,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    ...elevation[2],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -506,23 +435,22 @@ const styles = StyleSheet.create({
   },
   addToCartButton: {
     backgroundColor: colors.primary,
-    ...elevation[2],
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
   },
   addToCartText: {
     ...typography.labelMedium,
     color: colors.onPrimary,
     fontWeight: '600',
   },
-  purchasedButton: {
+  openButton: {
     backgroundColor: colors.success,
-    ...elevation[1],
-  },
-  purchasedRow: {
-    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.successDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  purchasedText: {
+  openButtonText: {
     ...typography.labelMedium,
     color: colors.onPrimary,
     fontWeight: '600',
@@ -540,7 +468,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md - 4,
     paddingHorizontal: spacing.sm + 2,
-    ...elevation[1],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   statNumber: {
     ...typography.titleLarge,
@@ -572,13 +501,42 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm + 2,
   },
+  seriesCard: {
+    flexBasis: '47%',
+    backgroundColor: colors.primary + '12',
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  seriesIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  seriesPkgCount: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    marginTop: spacing.xs,
+    fontWeight: '500',
+  },
+  emptySeriesText: {
+    ...typography.bodyMedium,
+    color: colors.onSurfaceVariant,
+    paddingVertical: spacing.md,
+  },
   categoryCard: {
     flexBasis: '31%',
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md - 4,
     alignItems: 'center',
-    ...elevation[1],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   categoryEmoji: {
     fontSize: 24,
@@ -599,7 +557,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
     padding: spacing.md - 4,
-    ...elevation[1],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   stepBadge: {
     ...typography.labelMedium,
@@ -637,7 +596,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md - 4,
     alignItems: 'center',
-    ...elevation[1],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   partnerLetter: {
     ...typography.titleMedium,
@@ -654,7 +614,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing.md - 4,
     marginTop: spacing.sm,
-    ...elevation[1],
+    borderWidth: 1,
+    borderColor: colors.gray200,
   },
   faqQuestion: {
     ...typography.titleSmall,
@@ -695,7 +656,8 @@ const styles = StyleSheet.create({
   },
   bottomPrimary: {
     backgroundColor: colors.primary,
-    ...elevation[2],
+    borderWidth: 1,
+    borderColor: colors.primaryDark,
   },
   bottomPrimaryText: {
     ...typography.labelLarge,

@@ -7,7 +7,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
-  Tests: undefined;
+  Tests: { seriesId?: string; seriesName?: string } | undefined;
   Cart: undefined;
   Attempts: undefined;
   Dashboard: undefined;
@@ -20,6 +20,8 @@ export type StackParamList = {
   Checkout: undefined;
   PaymentSuccess: { order_id: string };
   PaymentFailure: undefined;
+  PackageDetail: { packageId: string; packageName?: string };
+  CategoryTests: { packageId: string; categoryName: string; packageName?: string };
 };
 
 // Drawer routes (must match DrawerParamList in AppDrawer)

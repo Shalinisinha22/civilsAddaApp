@@ -6,6 +6,7 @@ type User = {
   id: string;
   name: string;
   email: string;
+  phone?: string;
 };
 
 type AuthContextValue = {
@@ -16,6 +17,7 @@ type AuthContextValue = {
   register: (name: string, phoneNumber: string, password: string, email?: string) => Promise<void>;
   logout: () => Promise<void>;
   googleSignIn: () => Promise<void>;
+  updateProfile: (data: { name?: string; email?: string; phone?: string }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -67,6 +69,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const updateProfile = async (data: { name?: string; email?: string; phone?: string }) => {
+    const res = await api.auth.updateProfile(data);
+    if (res.success && res.data?.user) {
+      setUser(res.data.user);
+    } else {
+      throw new Error(res.message || 'Failed to update profile');
+    }
+  };
+
   const googleSignIn = async () => {
     try {
       const { idToken } = await signInWithGoogle();
@@ -97,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         googleSignIn,
+        updateProfile,
       }}
     >
       {children}

@@ -191,7 +191,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
             <Text style={styles.statLabel}>Purchased Tests</Text>
-            <Text style={styles.statEmoji}>📚</Text>
+                        <Icons.School size={24} color={colors.onSurfaceVariant} />
           </View>
           <Text style={styles.statValue}>{stats.purchasedTests}</Text>
           <Text style={styles.statHint}>Tests available</Text>

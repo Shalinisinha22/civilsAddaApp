@@ -25,7 +25,7 @@ const TabIcon: React.FC<{ name: string; focused: boolean; color: string }> = ({
       case 'Home':
         return <Icons.Home size={24} color={color} />;
       case 'Tests':
-        return <Icons.Tests size={24} color={color} />;
+        return <Icons.Inventory size={24} color={color} />;
       case 'Cart':
         return <Icons.Cart size={24} color={color} />;
       case 'Attempts':
@@ -66,7 +66,7 @@ const MainTabs: React.FC = () => {
             {route.name === 'Home'
               ? 'Home'
               : route.name === 'Tests'
-              ? t('tests')
+              ? 'Packages'
               : route.name === 'Cart'
               ? t('cart')
               : route.name === 'Attempts'

@@ -9,11 +9,13 @@ import {
   Modal,
   Alert,
   BackHandler,
+  Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '@theme/colors';
+import { resolveImageUrl } from '@config/env';
 import { api } from '@api/api';
 import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
@@ -26,8 +28,14 @@ type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 type Question = {
   id: string;
   text: string;
+  textHindi?: string | null;
   options: string[];
+  optionsHindi?: string[] | null;
   selectedAnswer?: number | null;
+  correctAnswer?: number;
+  description?: string | null;
+  descriptionHindi?: string | null;
+  diagram?: string | null;
 };
 
 type TestDetail = {
@@ -60,7 +68,9 @@ const TestAttemptScreen: React.FC = () => {
     score: number;
     totalQuestions: number;
     percentage: number;
+    rank?: number;
   } | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0); // in seconds
@@ -107,7 +117,32 @@ const TestAttemptScreen: React.FC = () => {
           score: response.data.score,
           totalQuestions: response.data.totalQuestions,
           percentage: response.data.percentage,
+          rank: response.data.rank,
         });
+        // Re-fetch attempt to get correct answers for review
+        const refreshed = await api.attempts.getById(attemptId);
+        if (refreshed.success && refreshed.data) {
+          const refreshedData = refreshed.data;
+          setDetail({
+            test: {
+              id: refreshedData.attempt.testId,
+              title: refreshedData.attempt.testTitle,
+              durationMinutes: refreshedData.attempt.durationMinutes || 60,
+            },
+            questions: refreshedData.questions.map((q: any) => ({
+              id: q.id,
+              text: q.text,
+              textHindi: q.textHindi || null,
+              options: q.options,
+              optionsHindi: q.optionsHindi && q.optionsHindi.length > 0 ? q.optionsHindi : null,
+              selectedAnswer: q.selectedAnswer,
+              correctAnswer: q.correctAnswer,
+              description: q.description || null,
+              descriptionHindi: q.descriptionHindi || null,
+              diagram: q.diagram || null,
+            })),
+          });
+        }
         addToast("Time's up! Test auto-submitted.", 'info');
       }
     } catch (err: any) {
@@ -204,8 +239,14 @@ const TestAttemptScreen: React.FC = () => {
           questions: attemptData.questions.map((q: any) => ({
             id: q.id,
             text: q.text,
+            textHindi: q.textHindi || null,
             options: q.options,
+            optionsHindi: q.optionsHindi && q.optionsHindi.length > 0 ? q.optionsHindi : null,
             selectedAnswer: q.selectedAnswer,
+            correctAnswer: q.correctAnswer,
+            description: q.description || null,
+            descriptionHindi: q.descriptionHindi || null,
+            diagram: q.diagram || null,
           })),
         });
 
@@ -213,20 +254,9 @@ const TestAttemptScreen: React.FC = () => {
         const hasStarted = !!attemptData.attempt.startedAt;
         setTestStarted(hasStarted);
 
-        // Load test instructions
-        if (attemptData.test?.instructions) {
+        // Load test instructions from API (dynamic, not static)
+        if (attemptData.test?.instructions?.length) {
           setTestInstructions(attemptData.test.instructions);
-        } else {
-          setTestInstructions([
-            'Read each question carefully before selecting your answer.',
-            'You can navigate between questions using the Previous/Next buttons or the Question Palette.',
-            'Mark questions for review if you want to revisit them later.',
-            'The timer will start once you click "Start Test". Make sure you have a stable internet connection.',
-            'You can change your answers before submitting the test.',
-            'Once submitted, you cannot modify your answers.',
-            'The test will auto-submit when the time runs out.',
-            'Ensure you have answered all questions before submitting.',
-          ]);
         }
 
         // Show instructions if test hasn't started
@@ -254,6 +284,7 @@ const TestAttemptScreen: React.FC = () => {
             score: attemptData.attempt.score || 0,
             totalQuestions: attemptData.attempt.totalQuestions,
             percentage: attemptData.attempt.percentage || 0,
+            rank: attemptData.attempt.rank,
           });
         }
       }
@@ -358,7 +389,32 @@ const TestAttemptScreen: React.FC = () => {
           score: response.data.score,
           totalQuestions: response.data.totalQuestions,
           percentage: response.data.percentage,
+          rank: response.data.rank,
         });
+        // Re-fetch attempt to get correct answers for review
+        const refreshed = await api.attempts.getById(attemptId);
+        if (refreshed.success && refreshed.data) {
+          const refreshedData = refreshed.data;
+          setDetail({
+            test: {
+              id: refreshedData.attempt.testId,
+              title: refreshedData.attempt.testTitle,
+              durationMinutes: refreshedData.attempt.durationMinutes || 60,
+            },
+            questions: refreshedData.questions.map((q: any) => ({
+              id: q.id,
+              text: q.text,
+              textHindi: q.textHindi || null,
+              options: q.options,
+              optionsHindi: q.optionsHindi && q.optionsHindi.length > 0 ? q.optionsHindi : null,
+              selectedAnswer: q.selectedAnswer,
+              correctAnswer: q.correctAnswer,
+              description: q.description || null,
+              descriptionHindi: q.descriptionHindi || null,
+              diagram: q.diagram || null,
+            })),
+          });
+        }
         addToast('Test submitted successfully!', 'success');
       }
     } catch (err: any) {
@@ -460,7 +516,8 @@ const TestAttemptScreen: React.FC = () => {
       <ScrollView style={styles.instructionsContainer} contentContainerStyle={styles.instructionsContent}>
         <View style={styles.instructionsHeader}>
           <View style={styles.instructionsBadge}>
-            <Text style={styles.instructionsBadgeText}>📋 Test Instructions</Text>
+            <Icons.Assignment size={18} color="#1d4ed8" />
+            <Text style={styles.instructionsBadgeText}> Test Instructions</Text>
           </View>
           <Text style={styles.instructionsTitle}>{detail.test.title}</Text>
           <View style={styles.instructionsMeta}>
@@ -489,6 +546,27 @@ const TestAttemptScreen: React.FC = () => {
               <Text style={styles.instructionText}>{instruction}</Text>
             </View>
           ))}
+
+          {detail.questions.some(q => q.textHindi || (q.optionsHindi?.length)) && (
+            <View style={styles.languageSelector}>
+              <Icons.Language size={20} color={colors.primary} />
+              <Text style={styles.languageLabel}>Select Language:</Text>
+              <View style={styles.languageOptions}>
+                <TouchableOpacity
+                  style={[styles.languageOption, selectedLanguage === 'en' && styles.languageOptionActive]}
+                  onPress={() => setSelectedLanguage('en')}
+                >
+                  <Text style={[styles.languageOptionText, selectedLanguage === 'en' && styles.languageOptionTextActive]}>English</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.languageOption, selectedLanguage === 'hi' && styles.languageOptionActive]}
+                  onPress={() => setSelectedLanguage('hi')}
+                >
+                  <Text style={[styles.languageOptionText, selectedLanguage === 'hi' && styles.languageOptionTextActive]}>हिन्दी</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           <View style={styles.warningBox}>
             <Icons.Warning size={24} color="#92400e" />
@@ -558,6 +636,14 @@ const TestAttemptScreen: React.FC = () => {
           </Text>
         </View>
         <View style={styles.headerRight}>
+          {detail.questions.some(q => q.textHindi || (q.optionsHindi?.length)) && (
+            <TouchableOpacity
+              style={styles.langToggle}
+              onPress={() => setSelectedLanguage(prev => prev === 'en' ? 'hi' : 'en')}
+            >
+              <Text style={styles.langToggleText}>{selectedLanguage === 'en' ? 'EN' : 'हि'}</Text>
+            </TouchableOpacity>
+          )}
           <View
             style={[
               styles.timer,
@@ -581,51 +667,147 @@ const TestAttemptScreen: React.FC = () => {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {submitted ? (
-          <View style={styles.resultsContainer}>
-            <Icons.Celebration size={64} color={colors.primary} />
-            <Text style={styles.resultsTitle}>Test Submitted Successfully!</Text>
-            <Text style={styles.resultsSubtitle}>Your results are displayed below</Text>
+          <View>
+            {/* Results Summary */}
+            <View style={styles.resultsContainer}>
+              <Icons.Celebration size={64} color={colors.primary} />
+              <Text style={styles.resultsTitle}>Test Submitted Successfully!</Text>
+              <Text style={styles.resultsSubtitle}>Your results are displayed below</Text>
 
-            <View style={styles.resultsGrid}>
-              <View style={styles.resultCard}>
-                <Text style={styles.resultCardLabel}>Score</Text>
-                <Text style={styles.resultCardValue}>
-                  {submitted.score}/{submitted.totalQuestions}
-                </Text>
+              <View style={styles.resultsGrid}>
+                <View style={styles.resultCard}>
+                  <Text style={styles.resultCardLabel}>Score</Text>
+                  <Text style={styles.resultCardValue}>
+                    {submitted.score}/{submitted.totalQuestions}
+                  </Text>
+                </View>
+                <View style={[styles.resultCard, styles.resultCardGreen]}>
+                  <Text style={styles.resultCardLabel}>Percentage</Text>
+                  <Text style={styles.resultCardValue}>{submitted.percentage}%</Text>
+                </View>
+                <View style={[styles.resultCard, styles.resultCardPurple]}>
+                  <Text style={styles.resultCardLabel}>Rank</Text>
+                  <Text style={styles.resultCardValue}>#{submitted.rank || '—'}</Text>
+                </View>
+                <View style={[styles.resultCard, styles.resultCardOrange]}>
+                  <Text style={styles.resultCardLabel}>Performance</Text>
+                  <Text style={styles.resultCardValue}>
+                    {submitted.percentage >= 80
+                      ? 'Excellent'
+                      : submitted.percentage >= 60
+                      ? 'Good'
+                      : submitted.percentage >= 40
+                      ? 'Average'
+                      : 'Needs Improvement'}
+                  </Text>
+                </View>
               </View>
-              <View style={[styles.resultCard, styles.resultCardGreen]}>
-                <Text style={styles.resultCardLabel}>Percentage</Text>
-                <Text style={styles.resultCardValue}>{submitted.percentage}%</Text>
-              </View>
-              <View style={[styles.resultCard, styles.resultCardPurple]}>
-                <Text style={styles.resultCardLabel}>Performance</Text>
-                <Text style={styles.resultCardValue}>
-                  {submitted.percentage >= 80
-                    ? 'Excellent'
-                    : submitted.percentage >= 60
-                    ? 'Good'
-                    : submitted.percentage >= 40
-                    ? 'Average'
-                    : 'Needs Improvement'}
-                </Text>
+
+              <View style={styles.resultsButtons}>
+                <TouchableOpacity
+                  style={styles.resultsButton}
+                  onPress={() => navigation.navigate('Attempts')}
+                >
+                  <Text style={styles.resultsButtonText}>View All Attempts</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.resultsButton, styles.resultsButtonSecondary]}
+                  onPress={() => navigation.navigate('Dashboard')}
+                >
+                  <Text style={[styles.resultsButtonText, styles.resultsButtonTextSecondary]}>
+                    Back to Dashboard
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.resultsButtons}>
-              <TouchableOpacity
-                style={styles.resultsButton}
-                onPress={() => navigation.navigate('Attempts')}
-              >
-                <Text style={styles.resultsButtonText}>View All Attempts</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.resultsButton, styles.resultsButtonSecondary]}
-                onPress={() => navigation.navigate('Dashboard')}
-              >
-                <Text style={[styles.resultsButtonText, styles.resultsButtonTextSecondary]}>
-                  Back to Dashboard
-                </Text>
-              </TouchableOpacity>
+            {/* Question Review */}
+            <View style={styles.reviewSection}>
+              {detail.questions.map((question, index) => {
+                const userAnswer = question.selectedAnswer;
+                const correctAnswer = question.correctAnswer;
+                const isCorrect = userAnswer === correctAnswer;
+                const isAnswered = userAnswer !== null && userAnswer !== undefined;
+                return (
+                  <View key={question.id} style={styles.reviewCard}>
+                    <View style={styles.reviewCardHeader}>
+                      <View style={[styles.reviewBadge, isCorrect ? styles.reviewBadgeCorrect : isAnswered ? styles.reviewBadgeWrong : styles.reviewBadgeUnanswered]}>
+                        <Text style={styles.reviewBadgeText}>{index + 1}</Text>
+                      </View>
+                      <Text style={[styles.reviewStatus, isCorrect ? styles.reviewStatusCorrect : isAnswered ? styles.reviewStatusWrong : styles.reviewStatusUnanswered]}>
+                        {isCorrect ? 'Correct' : isAnswered ? 'Incorrect' : 'Not Answered'}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.reviewQuestionText}>
+                      {question.text}
+                    </Text>
+
+                    {question.diagram && (
+                      <View style={styles.diagramContainer}>
+                        <Image
+                          source={{ uri: resolveImageUrl(question.diagram) }}
+                          style={styles.diagramImage}
+                          resizeMode="contain"
+                          onError={() => {}}
+                        />
+                      </View>
+                    )}
+
+                    <View style={styles.reviewOptionsContainer}>
+                      {question.options.map((option, optIdx) => {
+                        const isUserAns = userAnswer === optIdx;
+                        const isCorrectOpt = correctAnswer === optIdx;
+                        const optionLabel = String.fromCharCode(65 + optIdx);
+                        return (
+                          <View
+                            key={optIdx}
+                            style={[styles.reviewOption, isCorrectOpt ? styles.reviewOptionCorrect : isUserAns && !isCorrect ? styles.reviewOptionWrong : styles.reviewOptionNeutral]}
+                          >
+                            <View style={styles.reviewOptionRow}>
+                              <View style={[styles.reviewOptionIcon, isCorrectOpt ? styles.reviewOptionIconCorrect : isUserAns && !isCorrect ? styles.reviewOptionIconWrong : styles.reviewOptionIconNeutral]}>
+                                <Text style={[styles.reviewOptionIconText, (isCorrectOpt || (isUserAns && !isCorrect)) && styles.reviewOptionIconTextActive]}>
+                                  {isCorrectOpt ? '✓' : isUserAns && !isCorrect ? '✗' : optionLabel}
+                                </Text>
+                              </View>
+                              <Text style={[styles.reviewOptionText, (isCorrectOpt || (isUserAns && !isCorrect)) && styles.reviewOptionTextActive]}>
+                                {option}
+                              </Text>
+                              {isCorrectOpt && <Text style={styles.reviewCorrectLabel}>Correct</Text>}
+                              {isUserAns && !isCorrect && <Text style={styles.reviewWrongLabel}>Your Answer</Text>}
+                              {isUserAns && isCorrect && <Text style={styles.reviewCorrectLabel}>Your Answer</Text>}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+
+                    {correctAnswer !== undefined && (
+                      <View style={styles.reviewCorrectAnswerBox}>
+                        <Text style={styles.reviewCorrectAnswerIcon}>✓</Text>
+                        <View>
+                          <Text style={styles.reviewCorrectAnswerTitle}>Correct Answer</Text>
+                          <Text style={styles.reviewCorrectAnswerText}>
+                            Option {String.fromCharCode(65 + correctAnswer)}: {question.options[correctAnswer]}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {(selectedLanguage === 'hi' && question.descriptionHindi) || question.description ? (
+                      <View style={styles.reviewExplanationBox}>
+                        <Text style={styles.reviewExplanationIcon}>💡</Text>
+                        <View>
+                          <Text style={styles.reviewExplanationTitle}>Explanation</Text>
+                          <Text style={styles.reviewExplanationText}>
+                            {selectedLanguage === 'hi' && question.descriptionHindi ? question.descriptionHindi : question.description}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
             </View>
           </View>
         ) : (
@@ -676,11 +858,25 @@ const TestAttemptScreen: React.FC = () => {
             </View>
 
             {/* Question Text */}
-            <Text style={styles.questionText}>{currentQuestion.text}</Text>
+            <Text style={styles.questionText}>
+              {selectedLanguage === 'hi' && currentQuestion.textHindi ? currentQuestion.textHindi : currentQuestion.text}
+            </Text>
+
+            {/* Diagram */}
+            {currentQuestion.diagram && (
+              <View style={styles.diagramContainer}>
+                <Image
+                  source={{ uri: resolveImageUrl(currentQuestion.diagram) }}
+                  style={styles.diagramImage}
+                  resizeMode="contain"
+                  onError={() => {}}
+                />
+              </View>
+            )}
 
             {/* Options */}
             <View style={styles.optionsContainer}>
-              {currentQuestion.options.map((option, optIdx) => (
+              {(selectedLanguage === 'hi' && currentQuestion.optionsHindi ? currentQuestion.optionsHindi : currentQuestion.options).map((option, optIdx) => (
                 <TouchableOpacity
                   key={optIdx}
                   style={[
@@ -1065,6 +1261,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 26,
   },
+  diagramContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  diagramImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+  },
   optionsContainer: {
     gap: 12,
     marginBottom: 20,
@@ -1267,13 +1472,14 @@ const styles = StyleSheet.create({
   },
   resultsGrid: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 24,
     width: '100%',
   },
   resultCard: {
-    flex: 1,
-    padding: 16,
+    width: '48%',
+    padding: 12,
     borderRadius: 12,
     backgroundColor: '#eff6ff',
     borderWidth: 1,
@@ -1287,6 +1493,10 @@ const styles = StyleSheet.create({
   resultCardPurple: {
     backgroundColor: '#f3e8ff',
     borderColor: '#c4b5fd',
+  },
+  resultCardOrange: {
+    backgroundColor: '#fff7ed',
+    borderColor: '#fdba74',
   },
   resultCardLabel: {
     fontSize: 12,
@@ -1335,6 +1545,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   instructionsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
@@ -1413,6 +1625,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.gray800,
     lineHeight: 20,
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#f0f9ff',
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+    marginTop: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  languageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.gray700,
+    marginRight: 8,
+  },
+  languageOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  languageOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray300,
+  },
+  languageOptionActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  languageOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.gray700,
+  },
+  languageOptionTextActive: {
+    color: colors.white,
+  },
+  langToggle: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    marginRight: 4,
+  },
+  langToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1d4ed8',
   },
   warningBox: {
     flexDirection: 'row',
@@ -1575,6 +1843,184 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.white,
+  },
+  reviewSection: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  reviewCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    padding: 16,
+    marginBottom: 16,
+  },
+  reviewCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  reviewBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewBadgeCorrect: {
+    backgroundColor: '#dcfce7',
+  },
+  reviewBadgeWrong: {
+    backgroundColor: '#fee2e2',
+  },
+  reviewBadgeUnanswered: {
+    backgroundColor: colors.gray200,
+  },
+  reviewBadgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.gray900,
+  },
+  reviewStatus: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  reviewStatusCorrect: {
+    color: '#15803d',
+  },
+  reviewStatusWrong: {
+    color: colors.danger,
+  },
+  reviewStatusUnanswered: {
+    color: colors.gray500,
+  },
+  reviewQuestionText: {
+    fontSize: 15,
+    color: colors.gray800,
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  reviewOptionsContainer: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  reviewOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  reviewOptionCorrect: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+  },
+  reviewOptionWrong: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fca5a5',
+  },
+  reviewOptionNeutral: {
+    backgroundColor: colors.gray50,
+    borderColor: colors.gray200,
+  },
+  reviewOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reviewOptionIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewOptionIconCorrect: {
+    backgroundColor: '#22c55e',
+  },
+  reviewOptionIconWrong: {
+    backgroundColor: '#ef4444',
+  },
+  reviewOptionIconNeutral: {
+    backgroundColor: colors.gray300,
+  },
+  reviewOptionIconText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.gray600,
+  },
+  reviewOptionIconTextActive: {
+    color: colors.white,
+  },
+  reviewOptionText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.gray700,
+  },
+  reviewOptionTextActive: {
+    color: colors.gray900,
+    fontWeight: '600',
+  },
+  reviewCorrectLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803d',
+  },
+  reviewWrongLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.danger,
+  },
+  reviewCorrectAnswerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#86efac',
+    marginBottom: 8,
+  },
+  reviewCorrectAnswerIcon: {
+    fontSize: 18,
+    color: '#22c55e',
+    fontWeight: '700',
+  },
+  reviewCorrectAnswerTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803d',
+    marginBottom: 2,
+  },
+  reviewCorrectAnswerText: {
+    fontSize: 14,
+    color: '#166534',
+  },
+  reviewExplanationBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fefce8',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  reviewExplanationIcon: {
+    fontSize: 16,
+  },
+  reviewExplanationTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400e',
+    marginBottom: 2,
+  },
+  reviewExplanationText: {
+    fontSize: 14,
+    color: '#78350f',
+    lineHeight: 20,
   },
 });
 

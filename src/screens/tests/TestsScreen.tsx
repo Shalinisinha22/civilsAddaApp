@@ -1,16 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { api } from '@api/api';
 import { colors } from '@theme/colors';
@@ -20,6 +21,7 @@ import { useToast } from '@contexts/ToastContext';
 import { Icons } from '@components/Icons';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList, 'Tests'>;
+type TestsRouteProp = RouteProp<AppNavigationParamList, 'Tests'>;
 
 type PackageTest = {
   id: string;
@@ -29,12 +31,14 @@ type PackageTest = {
   durationMinutes?: number;
   totalQuestions?: number;
   isPurchased?: boolean;
+  isDemo?: boolean;
 };
 
 type Package = {
   id: string;
   name: string;
   description?: string;
+  series?: string;
   isActive: boolean;
   isFeatured?: boolean;
   totalTests: number;
@@ -55,6 +59,9 @@ const gradients = [
 
 const TestsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<TestsRouteProp>();
+  const seriesId = route.params?.seriesId;
+  const seriesName = route.params?.seriesName;
   const { t } = useTranslation();
   const { addToCart } = useCart();
   const { addToast } = useToast();
@@ -64,14 +71,22 @@ const TestsScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
+  const [seriesList, setSeriesList] = useState<{ id: string; name: string }[]>([]);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | undefined>(seriesId);
 
   const loadPackages = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.packages.getAll();
-      if (response.success && response.data) {
-        setPackages(response.data as Package[]);
+      const [pkgRes, seriesRes] = await Promise.allSettled([
+        api.packages.getAll(seriesId),
+        api.series.getAll(),
+      ]);
+      if (pkgRes.status === 'fulfilled' && pkgRes.value.success && pkgRes.value.data) {
+        setPackages(pkgRes.value.data as Package[]);
+      }
+      if (seriesRes.status === 'fulfilled' && seriesRes.value.success && seriesRes.value.data) {
+        setSeriesList(seriesRes.value.data.map((s: any) => ({ id: s.id, name: s.name })));
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to load packages');
@@ -81,16 +96,24 @@ const TestsScreen: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadPackages();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      setSelectedSeriesId(seriesId);
+      loadPackages();
+    }, [seriesId])
+  );
+
+  const filteredPackages = useMemo(() => {
+    if (!selectedSeriesId) return packages;
+    return packages.filter((p) => p.series === selectedSeriesId);
+  }, [packages, selectedSeriesId]);
 
   const stats = useMemo(() => {
-    const totalTests = packages.reduce((c, p) => c + p.totalTests, 0);
-    const totalValue = packages.reduce((c, p) => c + (p.price || 0), 0);
-    const owned = packages.filter((p) => p.isPurchased).length;
-    return { count: packages.length, totalTests, totalValue, owned };
-  }, [packages]);
+    const totalTests = filteredPackages.reduce((c, p) => c + p.totalTests, 0);
+    const totalValue = filteredPackages.reduce((c, p) => c + (p.price || 0), 0);
+    const owned = filteredPackages.filter((p) => p.isPurchased).length;
+    return { count: filteredPackages.length, totalTests, totalValue, owned };
+  }, [filteredPackages]);
 
   const handleAddPackageToCart = (pkg: Package) => {
     setAddingToCartId(pkg.id);
@@ -121,9 +144,9 @@ const TestsScreen: React.FC = () => {
               <Text style={styles.cardDescription} numberOfLines={2}>{pkg.description}</Text>
             ) : null}
             <View style={styles.cardTags}>
-              <View style={styles.tag}><Text style={styles.tagText}>📦 {pkg.totalTests} tests</Text></View>
+              <View style={styles.tag}><Text style={styles.tagText}>{pkg.totalTests} tests</Text></View>
               {pkg.isFeatured ? (
-                <View style={[styles.tag, styles.featuredTag]}><Text style={styles.featuredTagText}>⭐ Featured</Text></View>
+                <View style={[styles.tag, styles.featuredTag]}><Text style={styles.featuredTagText}>Featured</Text></View>
               ) : null}
             </View>
           </View>
@@ -152,14 +175,13 @@ const TestsScreen: React.FC = () => {
           </View>
 
           <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.viewButton} onPress={() => setSelectedPackage(pkg)}>
+            <TouchableOpacity style={styles.viewButton} onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}>
               <Text style={styles.viewButtonText}>View Tests</Text>
             </TouchableOpacity>
             {pkg.isPurchased ? (
-              <View style={styles.purchasedBadge}>
-                <Icons.Check size={16} color={colors.white} />
-                <Text style={styles.purchasedBadgeText}> Purchased</Text>
-              </View>
+              <TouchableOpacity style={styles.openBtn} onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}>
+                <Text style={styles.openBtnText}>Open</Text>
+              </TouchableOpacity>
             ) : pkg.price > 0 ? (
               <TouchableOpacity
                 style={[styles.addToCartButton, isAdding && { opacity: 0.6 }]}
@@ -201,12 +223,47 @@ const TestsScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      <Text style={styles.screenTitle}>
-        {t('tests') || 'Test Packages'}
-        <Text style={styles.screenTitleCount}> ({stats.count})</Text>
-      </Text>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.screenTitle}>
+            {seriesName || 'Packages'}
+            <Text style={styles.screenTitleCount}> ({stats.count})</Text>
+          </Text>
+          {seriesName ? (
+            <Text style={styles.screenSubtitle}>Test packages for {seriesName}</Text>
+          ) : null}
+        </View>
+        {seriesName && (
+          <TouchableOpacity onPress={() => { setSelectedSeriesId(undefined); navigation.navigate('Tests', {}); }}>
+            <Text style={styles.clearFilter}>Clear</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {seriesList.length > 0 && (
+        <View style={styles.seriesFilterRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.seriesFilterScroll}>
+            <TouchableOpacity
+              style={[styles.seriesFilterChip, !selectedSeriesId && styles.seriesFilterChipActive]}
+              onPress={() => { setSelectedSeriesId(undefined); navigation.navigate('Tests', {}); }}
+            >
+              <Text style={[styles.seriesFilterChipText, !selectedSeriesId && styles.seriesFilterChipTextActive]}>All</Text>
+            </TouchableOpacity>
+            {seriesList.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.seriesFilterChip, selectedSeriesId === s.id && styles.seriesFilterChipActive]}
+                onPress={() => { setSelectedSeriesId(s.id); navigation.navigate('Tests', { seriesId: s.id, seriesName: s.name }); }}
+              >
+                <Text style={[styles.seriesFilterChipText, selectedSeriesId === s.id && styles.seriesFilterChipTextActive]}>
+                  {s.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
       <FlatList
-        data={packages}
+        data={filteredPackages}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
@@ -232,7 +289,9 @@ const TestsScreen: React.FC = () => {
                         {selectedPackage.price > 0 ? ` • ₹${selectedPackage.price}` : ' • Free'}
                       </Text>
                       {selectedPackage.isPurchased ? (
-                        <View style={styles.purchasedPill}><Text style={styles.purchasedPillText}>✓ Purchased</Text></View>
+                        <TouchableOpacity style={styles.openPill} onPress={() => { setSelectedPackage(null); navigation.navigate('PackageDetail', { packageId: selectedPackage.id, packageName: selectedPackage.name }); }}>
+                          <Text style={styles.openPillText}>Open</Text>
+                        </TouchableOpacity>
                       ) : selectedPackage.price > 0 ? (
                         <TouchableOpacity
                           style={styles.addPill}
@@ -247,7 +306,7 @@ const TestsScreen: React.FC = () => {
                     ) : null}
                   </View>
                   <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedPackage(null)}>
-                    <Text style={styles.modalCloseBtnText}>✕</Text>
+                    <Icons.Close size={20} color={colors.gray600} />
                   </TouchableOpacity>
                 </View>
                 <ScrollView style={styles.testList}>
@@ -268,22 +327,15 @@ const TestsScreen: React.FC = () => {
                           </Text>
                         </View>
                       </View>
-                      {(selectedPackage.isPurchased || test.isPurchased) && (
+                      {(selectedPackage.isPurchased || test.isPurchased || test.isDemo) && (
                         <TouchableOpacity
                           style={styles.startBtn}
-                          onPress={async () => {
-                            try {
-                              const res = await api.attempts.create(test.id);
-                              if (res.success && res.data) {
-                                navigation.navigate('TestAttempt', { testId: test.id, attemptId: (res.data as any).attemptId });
-                              }
-                            } catch (e: any) {
-                              addToast(e?.message || 'Failed to start test', 'error');
-                            }
+                          onPress={() => {
                             setSelectedPackage(null);
+                            navigation.navigate('TestDetail', { testId: test.id });
                           }}
                         >
-                          <Text style={styles.startBtnText}>Start</Text>
+                          <Text style={styles.startBtnText}>Open</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -300,6 +352,9 @@ const TestsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.gray50, paddingHorizontal: 16, paddingTop: 12 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  screenSubtitle: { fontSize: 13, color: colors.gray500, marginTop: 2 },
+  clearFilter: { fontSize: 14, fontWeight: '600', color: colors.primary, paddingTop: 6 },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.gray50, padding: 24 },
   loadingLabel: { marginTop: 8, color: colors.gray600 },
   errorLabel: { color: colors.danger, textAlign: 'center', marginBottom: 12 },
@@ -307,6 +362,12 @@ const styles = StyleSheet.create({
   retryButtonText: { color: colors.gray700, fontWeight: '600' },
   screenTitle: { fontSize: 22, fontWeight: '800', color: colors.gray900, marginBottom: 12 },
   screenTitleCount: { fontSize: 14, fontWeight: '400', color: colors.gray500 },
+  seriesFilterRow: { marginBottom: 12 },
+  seriesFilterScroll: { gap: 8, paddingVertical: 4 },
+  seriesFilterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.gray300 },
+  seriesFilterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  seriesFilterChipText: { fontSize: 13, fontWeight: '600', color: colors.gray700 },
+  seriesFilterChipTextActive: { color: colors.white },
   listContent: { paddingBottom: 16, gap: 12 },
   card: { borderRadius: 16, overflow: 'hidden', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.gray200, marginBottom: 12 },
   cardHeader: { padding: 16 },
@@ -332,8 +393,8 @@ const styles = StyleSheet.create({
   viewButtonText: { fontSize: 13, fontWeight: '600', color: colors.gray700 },
   addToCartButton: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: colors.primary },
   addToCartButtonText: { fontSize: 13, fontWeight: '600', color: colors.white },
-  purchasedBadge: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', backgroundColor: colors.success },
-  purchasedBadgeText: { fontSize: 13, fontWeight: '600', color: colors.white },
+  openBtn: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success },
+  openBtnText: { fontSize: 13, fontWeight: '600', color: colors.white },
   freeButton: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: colors.success },
   freeButtonText: { fontSize: 13, fontWeight: '600', color: colors.white },
   // Modal
@@ -344,8 +405,8 @@ const styles = StyleSheet.create({
   modalHeaderTitle: { fontSize: 20, fontWeight: '700', color: colors.gray900, marginBottom: 8 },
   modalHeaderMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   modalHeaderMetaText: { fontSize: 13, color: colors.gray600 },
-  purchasedPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#dcfce7' },
-  purchasedPillText: { fontSize: 12, fontWeight: '600', color: '#15803d' },
+  openPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#059669' },
+  openPillText: { fontSize: 12, fontWeight: '600', color: '#ffffff' },
   addPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.primary },
   addPillText: { fontSize: 12, fontWeight: '600', color: colors.white },
   modalHeaderDesc: { fontSize: 13, color: colors.gray600, marginTop: 8 },

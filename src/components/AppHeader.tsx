@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerActions } from '@react-navigation/native';
 import { colors, elevation, typography, spacing } from '@theme/colors';
@@ -48,9 +48,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ routeName }) => {
             <Text style={styles.menuIcon}>☰</Text>
           </TouchableOpacity>
         )}
-        <View style={styles.logoBox}>
-          <Text style={styles.logoText}>CA</Text>
-        </View>
+        <Image source={require('../assets/logo.jpg')} style={styles.logoImage} />
         <Text style={styles.title}>{t('appName')}</Text>
       </View>
     </View>
@@ -110,20 +108,10 @@ const styles = StyleSheet.create({
     color: colors.onSurface,
     fontWeight: '300',
   },
-  logoBox: {
+  logoImage: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    ...elevation[2],
-  },
-  logoText: {
-    color: colors.onPrimary,
-    fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.5,
   },
   title: {
     marginLeft: spacing.sm,

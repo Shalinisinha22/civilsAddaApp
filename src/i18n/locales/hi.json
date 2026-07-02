@@ -62,7 +62,10 @@
   "googleSigninOpening": "ब्राउज़र में Google साइन-इन खोला जा रहा है...",
   "googleSigninCannotOpen": "Google साइन-इन के लिए ब्राउज़र नहीं खोला जा सका",
   "googleSigninFailed": "Google साइन-इन शुरू करने में विफल",
-  "attempts": "प्रयास"
+  "attempts": "प्रयास",
+  "register": "रजिस्टर",
+  "phoneNumber": "मोबाइल नंबर",
+  "phonePlaceholder": "अपना मोबाइल नंबर दर्ज करें"
 }
 
 

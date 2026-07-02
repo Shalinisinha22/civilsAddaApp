@@ -25,6 +25,7 @@ type TestSummary = {
   durationMinutes: number;
   totalQuestions: number;
   price: number;
+  isDemo?: boolean;
 };
 
 const MyTestsScreen: React.FC = () => {
@@ -44,10 +45,10 @@ const MyTestsScreen: React.FC = () => {
   const fetchPurchasedTests = async () => {
     try {
       setLoading(true);
-      const response = await api.purchases.getPurchasedTests();
+      const purchasedRes = await api.purchases.getPurchasedTests();
 
-      if (response.success && response.data) {
-        const formattedTests = response.data.map((test: any) => ({
+      if (purchasedRes.success && purchasedRes.data) {
+        const formattedTests = purchasedRes.data.map((test: any) => ({
           id: test.id,
           title: test.title,
           description: test.description || '',
@@ -79,8 +80,8 @@ const MyTestsScreen: React.FC = () => {
         </View>
       ) : purchased.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>📦</Text>
-          <Text style={styles.emptyTitle}>No tests purchased yet</Text>
+          <Icons.Inventory size={48} color={colors.gray400} />
+          <Text style={styles.emptyTitle}>No tests available yet</Text>
           <Text style={styles.emptyText}>
             Start exploring our collection of mock tests
           </Text>
@@ -92,68 +93,80 @@ const MyTestsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.grid}>
-          {purchased.map((test) => (
-            <View key={test.id} style={styles.testCard}>
-              <View style={styles.testCardHeader}>
-                <Text style={styles.testTitle} numberOfLines={2}>
-                  {test.title}
-                </Text>
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeSuccess}>Owned</Text>
-                </View>
+        <View style={styles.scrollContent}>
+          {/* Purchased Tests Section */}
+          {purchased.length > 0 && (
+            <View style={styles.sectionBlock}>
+              <Text style={styles.sectionTitle}>My Purchased Tests</Text>
+              <View style={styles.grid}>
+                {purchased.map((test) => (
+                  <View key={test.id} style={styles.testCard}>
+                    <View style={styles.testCardHeader}>
+                      <Text style={styles.testTitle} numberOfLines={2}>
+                        {test.title}
+                      </Text>
+                      <View style={styles.badgeContainer}>
+                        <TouchableOpacity
+                          style={styles.openBtn}
+                          onPress={() => navigation.navigate('TestDetail', { testId: test.id })}>
+                          <Text style={styles.openBtnText}>Open</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text style={styles.testDescription} numberOfLines={2}>
+                      {test.description}
+                    </Text>
+                    <View style={styles.testMeta}>
+                      <View style={styles.testMetaRow}>
+                        <Icons.Questions size={14} color={colors.gray600} />
+                        <Text style={styles.testMetaText}>
+                          {' '}{test.totalQuestions} Questions
+                        </Text>
+                      </View>
+                      <View style={styles.testMetaRow}>
+                        <Icons.Clock size={14} color={colors.gray600} />
+                        <Text style={styles.testMetaText}>
+                          {' '}{test.durationMinutes} min
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.startButton,
+                        startingId === test.id && styles.startButtonDisabled,
+                      ]}
+                      onPress={async () => {
+                        if (!isAuthenticated || !user?.id) {
+                          addToast('Please login to start a test', 'error');
+                          navigation.navigate('Login');
+                          return;
+                        }
+                        try {
+                          setStartingId(test.id);
+                          const response = await api.attempts.create(test.id);
+                          if (response.success && response.data) {
+                            navigation.navigate('TestAttempt', {
+                              testId: test.id,
+                              attemptId: response.data.attemptId,
+                            });
+                          }
+                        } catch (err: any) {
+                          addToast(err.message || 'Failed to start test', 'error');
+                        } finally {
+                          setStartingId(null);
+                        }
+                      }}
+                      disabled={startingId === test.id}
+                    >
+                      <Text style={styles.startButtonText}>
+                        {startingId === test.id ? 'Starting...' : 'Start Test'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
-              <Text style={styles.testDescription} numberOfLines={2}>
-                {test.description}
-              </Text>
-              <View style={styles.testMeta}>
-                <View style={styles.testMetaRow}>
-                  <Icons.Questions size={14} color={colors.gray600} />
-                  <Text style={styles.testMetaText}>
-                    {' '}{test.totalQuestions} Questions
-                  </Text>
-                </View>
-                <View style={styles.testMetaRow}>
-                  <Icons.Clock size={14} color={colors.gray600} />
-                  <Text style={styles.testMetaText}>
-                    {' '}{test.durationMinutes} min
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.startButton,
-                  startingId === test.id && styles.startButtonDisabled,
-                ]}
-                onPress={async () => {
-                  if (!isAuthenticated || !user?.id) {
-                    addToast('Please login to start a test', 'error');
-                    navigation.navigate('Login');
-                    return;
-                  }
-                  try {
-                    setStartingId(test.id);
-                    const response = await api.attempts.create(test.id);
-                    if (response.success && response.data) {
-                      navigation.navigate('TestAttempt', {
-                        testId: test.id,
-                        attemptId: response.data.attemptId,
-                      });
-                    }
-                  } catch (err: any) {
-                    addToast(err.message || 'Failed to start test', 'error');
-                  } finally {
-                    setStartingId(null);
-                  }
-                }}
-                disabled={startingId === test.id}
-              >
-                <Text style={styles.startButtonText}>
-                  {startingId === test.id ? 'Starting...' : 'Start Test'}
-                </Text>
-              </TouchableOpacity>
             </View>
-          ))}
+          )}
         </View>
       )}
     </ScrollView>
@@ -235,11 +248,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: colors.gray200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   testCardHeader: {
     flexDirection: 'row',
@@ -257,13 +265,15 @@ const styles = StyleSheet.create({
   badgeContainer: {
     marginLeft: 8,
   },
-  badgeSuccess: {
-    fontSize: 11,
-    color: colors.success,
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+  openBtn: {
+    backgroundColor: colors.success,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  openBtnText: {
+    color: colors.white,
+    fontSize: 12,
     fontWeight: '600',
   },
   testDescription: {
@@ -298,6 +308,18 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontWeight: '600',
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  sectionBlock: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.gray800,
+    marginBottom: 12,
   },
 });
 

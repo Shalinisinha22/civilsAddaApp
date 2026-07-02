@@ -1,6 +1,6 @@
 import React from 'react';
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import MainTabs from '@navigation/MainTabs';
 import MyTestsScreen from '@screens/dashboard/MyTestsScreen';
 import PerformanceScreen from '@screens/dashboard/PerformanceScreen';
@@ -31,9 +31,7 @@ const CustomDrawerContent = (props: any) => {
   return (
     <DrawerContentScrollView {...props} style={styles.drawerContent}>
       <View style={styles.drawerHeader}>
-        <View style={styles.logoBox}>
-          <Text style={styles.logoText}>CA</Text>
-        </View>
+        <Image source={require('../assets/logo.jpg')} style={styles.logoImage} />
         <Text style={styles.drawerTitle}>{t('appName')}</Text>
         {user && (
           <Text style={styles.userName}>{user.name || user.email}</Text>
@@ -119,19 +117,11 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 20,
   },
-  logoBox: {
+  logoImage: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
     marginBottom: 12,
-  },
-  logoText: {
-    color: colors.primary,
-    fontWeight: 'bold',
-    fontSize: 18,
   },
   drawerTitle: {
     fontSize: 20,

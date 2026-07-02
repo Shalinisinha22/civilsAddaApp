@@ -62,7 +62,10 @@
   "googleSigninOpening": "Opening Google Sign-In in browser...",
   "googleSigninCannotOpen": "Cannot open browser for Google Sign-In",
   "googleSigninFailed": "Failed to initiate Google Sign-In",
-  "attempts": "Attempts"
+  "attempts": "Attempts",
+  "register": "Register",
+  "phoneNumber": "Mobile Number",
+  "phonePlaceholder": "Enter your mobile number"
 }
 
 

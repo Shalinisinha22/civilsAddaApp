@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { api } from '@api/api';
 import { colors } from '@theme/colors';
+import { Icons } from '@components/Icons';
 
 type AttemptSummary = {
   attemptId: string;
@@ -88,7 +89,7 @@ const PerformanceScreen: React.FC = () => {
 
       {!loading && completed.length === 0 && !error && (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyEmoji}>📈</Text>
+          <Icons.ShowChart size={48} color={colors.gray400} />
           <Text style={styles.emptyTitle}>No performance data yet</Text>
           <Text style={styles.emptyText}>
             Complete at least one test to see analytics.

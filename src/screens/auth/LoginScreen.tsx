@@ -191,12 +191,12 @@ const LoginScreen: React.FC = () => {
             )}
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>{t('phoneNumber') || 'Phone Number'}</Text>
+              <Text style={styles.label}>{t('phoneNumber') || 'Mobile Number'}</Text>
               <TextInput
                 style={styles.input}
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
-                placeholder={t('phonePlaceholder') || 'Enter your phone number'}
+                placeholder={t('phonePlaceholder') || 'Enter your mobile number'}
                 placeholderTextColor={colors.gray400}
                 keyboardType="phone-pad"
               />
@@ -272,7 +272,7 @@ const LoginScreen: React.FC = () => {
 
             {/* Info Card */}
             <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>✨ Why create an account?</Text>
+              <Text style={styles.infoTitle}>Why create an account?</Text>
               <View style={styles.infoList}>
                 <Text style={styles.infoItem}>• Access your purchased mock tests</Text>
                 <Text style={styles.infoItem}>• Track your performance and scores</Text>
@@ -319,11 +319,6 @@ const styles = StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: colors.gray200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
   },
   header: {
     alignItems: 'center',
@@ -356,11 +351,8 @@ const styles = StyleSheet.create({
   },
   toggleButtonActive: {
     backgroundColor: colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   toggleText: {
     fontSize: 14,

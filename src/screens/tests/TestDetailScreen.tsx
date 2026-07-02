@@ -35,6 +35,7 @@ type TestDetail = {
     totalQuestions: number;
     price: number;
     isPurchased?: boolean;
+    isDemo?: boolean;
     highlights: Highlight[];
     instructions: string[];
   };
@@ -75,6 +76,7 @@ const TestDetailScreen: React.FC = () => {
               totalQuestions: testData.test.totalQuestions,
               price: testData.test.price,
               isPurchased: testData.test.isPurchased,
+              isDemo: testData.test.isDemo,
               highlights: testData.test.highlights || [],
               instructions: testData.test.instructions || [],
             },
@@ -154,7 +156,7 @@ const TestDetailScreen: React.FC = () => {
       return;
     }
 
-    if (data.test.price > 0 && !data.test.isPurchased) {
+    if (!data.test.isDemo && !data.test.isPurchased) {
       addToast('Please purchase this test before attempting', 'error');
       return;
     }
@@ -219,11 +221,14 @@ const TestDetailScreen: React.FC = () => {
               <Text style={styles.description}>{test.description}</Text>
             ) : null}
           </View>
-          {test.price === 0 ? (
-            <View style={styles.freeBadge}>
-              <Text style={styles.freeBadgeText}>FREE</Text>
-            </View>
-          ) : null}
+          <View style={styles.headerBadges}>
+
+            {test.price === 0 && !test.isDemo ? (
+              <View style={styles.freeBadge}>
+                <Text style={styles.freeBadgeText}>In Package</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -240,14 +245,14 @@ const TestDetailScreen: React.FC = () => {
           <View style={styles.statBox}>
             <Icons.Money size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>
-              {test.price === 0 ? 'Free' : `₹${test.price}`}
+              {test.isDemo ? 'Free' : test.price === 0 ? 'Package' : `₹${test.price}`}
             </Text>
             <Text style={styles.statLabel}>Price</Text>
           </View>
           <View style={styles.statBox}>
             <Icons.Target size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>
-              {test.price === 0 ? 'Yes' : 'Paid'}
+              {test.isDemo ? 'Demo' : test.price === 0 ? 'Package' : 'Paid'}
             </Text>
             <Text style={styles.statLabel}>Access</Text>
           </View>
@@ -266,7 +271,7 @@ const TestDetailScreen: React.FC = () => {
                 { backgroundColor: highlightColors[index % highlightColors.length] },
               ]}
             >
-              <Text style={styles.highlightIcon}>{h.icon || '✨'}</Text>
+              {h.icon ? <Text style={styles.highlightIcon}>{h.icon}</Text> : <Icons.Star size={20} color="#f59e0b" />}
               <View style={{ flex: 1 }}>
                 <Text style={styles.highlightTitle}>{h.title}</Text>
                 <Text style={styles.highlightDescription}>{h.description}</Text>
@@ -301,22 +306,13 @@ const TestDetailScreen: React.FC = () => {
       <View style={styles.card}>
         <View style={styles.priceRow}>
           <Text style={styles.priceText}>
-            {test.price === 0 ? 'FREE' : `₹${test.price}`}
+            {test.isDemo ? 'FREE' : test.price === 0 ? 'Part of Package' : `₹${test.price}`}
           </Text>
           {test.price > 0 && <Text style={styles.priceSubText}>One-time purchase</Text>}
         </View>
 
         <View style={styles.actionsColumn}>
-          {test.price > 0 && test.isPurchased ? (
-            <View style={[styles.primaryButton, styles.primaryButtonDisabled]}>
-              <View style={styles.purchasedRow}>
-                <Icons.Check size={16} color={colors.white} />
-                <Text style={styles.primaryButtonText}> Purchased</Text>
-              </View>
-            </View>
-          ) : null}
-
-          {test.price > 0 && !test.isPurchased ? (
+          {test.price > 0 && !test.isPurchased && !test.isDemo ? (
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleAddToCart}
@@ -329,11 +325,11 @@ const TestDetailScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.secondaryWideButton,
-              (test.price > 0 && !test.isPurchased) || starting
+              (!test.isDemo && !test.isPurchased) || starting
                 ? styles.secondaryButtonDisabled
                 : null,
             ]}
-            disabled={(test.price > 0 && !test.isPurchased) || starting}
+            disabled={(!test.isDemo && !test.isPurchased) || starting}
             onPress={handleStartAttempt}
             activeOpacity={0.9}
           >
@@ -342,24 +338,26 @@ const TestDetailScreen: React.FC = () => {
                 <ActivityIndicator size="small" color={colors.white} style={styles.buttonSpinner} />
                 <Text style={styles.secondaryWideButtonText}>Starting...</Text>
               </View>
+            ) : test.isDemo ? (
+              <Text style={styles.secondaryWideButtonText}>
+                {isAuthenticated ? 'Start Demo Test' : 'Login to Start'}
+              </Text>
             ) : (
               <Text style={styles.secondaryWideButtonText}>
-                {test.price > 0 && !test.isPurchased
-                  ? 'Purchase to Start'
-                  : isAuthenticated
-                  ? 'Start Test Now'
-                  : 'Login to Start'}
+                {test.isPurchased
+                  ? isAuthenticated ? 'Start Test Now' : 'Login to Start'
+                  : 'Purchase Package'}
               </Text>
             )}
           </TouchableOpacity>
 
-          {test.price === 0 && (
+          {test.price === 0 && !test.isDemo && (
             <TouchableOpacity
               style={styles.tertiaryButton}
-              onPress={handleAddToCart}
+              onPress={() => navigation.navigate('Tests')}
               activeOpacity={0.9}
             >
-              <Text style={styles.tertiaryButtonText}>Add to Cart Anyway</Text>
+              <Text style={styles.tertiaryButtonText}>Browse Packages</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -391,7 +389,7 @@ const TestDetailScreen: React.FC = () => {
         <View style={styles.overviewRow}>
           <Text style={styles.overviewLabel}>Type</Text>
           <Text style={styles.overviewValue}>
-            {test.price === 0 ? 'Free' : 'Premium'}
+            {test.isDemo ? 'Demo' : test.price === 0 ? 'Package' : 'Premium'}
           </Text>
         </View>
       </View>
@@ -485,6 +483,11 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     color: colors.gray700,
+  },
+  headerBadges: {
+    flexDirection: 'row',
+    gap: 6,
+    alignSelf: 'flex-start',
   },
   freeBadge: {
     paddingHorizontal: 10,
