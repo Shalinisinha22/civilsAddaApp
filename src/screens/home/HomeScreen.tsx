@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,7 +15,7 @@ import { api } from '@api/api';
 import { useCart } from '@contexts/CartContext';
 import { useToast } from '@contexts/ToastContext';
 import type { AppNavigationParamList } from '@navigation/types';
-import { Icons } from '@components/Icons';
+import { Icons, Icon } from '@components/Icons';
 import BannerCarousel from '@components/BannerCarousel';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
@@ -90,7 +91,13 @@ const HomeScreen: React.FC = () => {
 
   const trending = packages.slice(0, 4);
 
+  const openWhatsApp = () => {
+    const url = 'https://wa.me/917009595611';
+    Linking.openURL(url).catch(() => {});
+  };
+
   return (
+    <View style={styles.wrapper}>
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
       {/* Banner carousel */}
       <BannerCarousel />
@@ -293,10 +300,18 @@ const HomeScreen: React.FC = () => {
         </View>
       </View>
     </ScrollView>
+
+      <TouchableOpacity style={styles.whatsappButton} onPress={openWhatsApp} activeOpacity={0.8}>
+        <Icon name="whatsapp" size={28} color="#fff" library="materialCommunity" />
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.background,
@@ -673,6 +688,23 @@ const styles = StyleSheet.create({
     ...typography.labelLarge,
     fontWeight: '600',
     color: colors.onSurface,
+  },
+  whatsappButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#25D366',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 100,
   },
 });
 
