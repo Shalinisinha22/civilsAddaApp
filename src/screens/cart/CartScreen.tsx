@@ -1,4 +1,5 @@
 import React from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
   View,
   Text,
@@ -54,9 +55,7 @@ const CartScreen: React.FC = () => {
                 </Text>
                 <Text style={styles.itemTitle}>{item.title}</Text>
                 {item.description ? (
-                  <Text style={styles.itemDescription} numberOfLines={2}>
-                    {item.description}
-                  </Text>
+                  <HTMLDescription html={item.description} style={styles.itemDescription} />
                 ) : null}
               </View>
               <Text style={styles.itemPrice}>

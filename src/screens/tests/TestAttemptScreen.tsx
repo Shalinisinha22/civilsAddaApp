@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
   View,
   Text,
@@ -678,7 +679,7 @@ const TestAttemptScreen: React.FC = () => {
                 <View style={styles.resultCard}>
                   <Text style={styles.resultCardLabel}>Score</Text>
                   <Text style={styles.resultCardValue}>
-                    {submitted.score}/{submitted.totalQuestions}
+                    {Number(submitted.score).toFixed(2)}/{submitted.totalQuestions}
                   </Text>
                 </View>
                 <View style={[styles.resultCard, styles.resultCardGreen]}>
@@ -799,9 +800,7 @@ const TestAttemptScreen: React.FC = () => {
                         <Text style={styles.reviewExplanationIcon}>💡</Text>
                         <View>
                           <Text style={styles.reviewExplanationTitle}>Explanation</Text>
-                          <Text style={styles.reviewExplanationText}>
-                            {selectedLanguage === 'hi' && question.descriptionHindi ? question.descriptionHindi : question.description}
-                          </Text>
+                          <HTMLDescription html={selectedLanguage === 'hi' && question.descriptionHindi ? question.descriptionHindi : question.description} style={styles.reviewExplanationText} />
                         </View>
                       </View>
                     ) : null}

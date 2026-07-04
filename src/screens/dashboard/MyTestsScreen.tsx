@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
   View,
   Text,
@@ -113,9 +114,7 @@ const MyTestsScreen: React.FC = () => {
                         </TouchableOpacity>
                       </View>
                     </View>
-                    <Text style={styles.testDescription} numberOfLines={2}>
-                      {test.description}
-                    </Text>
+                    <HTMLDescription html={test.description} style={styles.testDescription} />
                     <View style={styles.testMeta}>
                       <View style={styles.testMetaRow}>
                         <Icons.Questions size={14} color={colors.gray600} />

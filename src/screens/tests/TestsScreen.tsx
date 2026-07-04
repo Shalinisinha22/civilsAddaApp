@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,7 +18,7 @@ import { colors } from '@theme/colors';
 import type { AppNavigationParamList } from '@navigation/types';
 import { useCart } from '@contexts/CartContext';
 import { useToast } from '@contexts/ToastContext';
-import { Icons } from '@components/Icons';
+import { resolveImageUrl } from '@config/env';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList, 'Tests'>;
 type TestsRouteProp = RouteProp<AppNavigationParamList, 'Tests'>;
@@ -38,6 +38,7 @@ type Package = {
   id: string;
   name: string;
   description?: string;
+  image?: string;
   series?: string;
   isActive: boolean;
   isFeatured?: boolean;
@@ -47,15 +48,6 @@ type Package = {
   isPurchased: boolean;
   tests: PackageTest[];
 };
-
-const gradients = [
-  ['#2563eb', '#1d4ed8'],
-  ['#059669', '#047857'],
-  ['#7c3aed', '#6d28d9'],
-  ['#dc2626', '#b91c1c'],
-  ['#d97706', '#b45309'],
-  ['#0891b2', '#0e7490'],
-];
 
 const TestsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -69,10 +61,9 @@ const TestsScreen: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
-  const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
   const [seriesList, setSeriesList] = useState<{ id: string; name: string }[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | undefined>(seriesId);
+  const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
 
   const loadPackages = async () => {
     try {
@@ -131,68 +122,50 @@ const TestsScreen: React.FC = () => {
     setTimeout(() => setAddingToCartId(null), 600);
   };
 
-  const renderItem = ({ item: pkg, index }: { item: Package; index: number }) => {
-    const gradient = gradients[index % gradients.length];
+  const renderItem = ({ item: pkg }: { item: Package }) => {
     const isAdding = addingToCartId === pkg.id;
-
     return (
       <View style={styles.card}>
-        <View style={[styles.cardHeader, { backgroundColor: gradient[0] }]}>
-          <View>
-            <Text style={styles.cardTitle}>{pkg.name}</Text>
-            {pkg.description ? (
-              <Text style={styles.cardDescription} numberOfLines={2}>{pkg.description}</Text>
-            ) : null}
-            <View style={styles.cardTags}>
-              <View style={styles.tag}><Text style={styles.tagText}>{pkg.totalTests} tests</Text></View>
-              {pkg.isFeatured ? (
-                <View style={[styles.tag, styles.featuredTag]}><Text style={styles.featuredTagText}>Featured</Text></View>
-              ) : null}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}
+          activeOpacity={0.9}
+        >
+          {pkg.image ? (
+            <Image source={{ uri: resolveImageUrl(pkg.image) }} style={styles.cardImage} />
+          ) : (
+            <View style={styles.cardImagePlaceholder}>
+              <Text style={styles.cardPlaceholderIcon}>📦</Text>
+              <Text style={styles.cardPlaceholderText}>{pkg.name.slice(0, 2).toUpperCase()}</Text>
             </View>
+          )}
+          <View style={styles.cardOverlay}>
+            <Text style={styles.cardTitle} numberOfLines={2}>{pkg.name}</Text>
+            <Text style={styles.cardSubtitle}>{pkg.totalTests} test{pkg.totalTests !== 1 ? 's' : ''}</Text>
           </View>
-        </View>
-
-        <View style={styles.cardBody}>
-          <View style={styles.priceRow}>
-            {pkg.price > 0 ? (
-              <><Text style={styles.priceValue}>₹{pkg.price}</Text><Text style={styles.priceLabel}> one-time</Text></>
-            ) : (
-              <Text style={styles.freePrice}>Free</Text>
-            )}
-          </View>
-
-          <View style={styles.testTags}>
-            {pkg.tests.slice(0, 3).map((test) => (
-              <View key={test.id} style={styles.testTag}>
-                <Text style={styles.testTagText} numberOfLines={1}>
-                  {test.title.length > 18 ? test.title.slice(0, 18) + '...' : test.title}
-                </Text>
-              </View>
-            ))}
-            {pkg.tests.length > 3 ? (
-              <View style={styles.testTagMore}><Text style={styles.testTagMoreText}>+{pkg.tests.length - 3} more</Text></View>
-            ) : null}
-          </View>
-
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.viewButton} onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}>
-              <Text style={styles.viewButtonText}>View Tests</Text>
+        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <Text style={styles.cardPrice}>{pkg.price === 0 ? 'Free' : `₹${pkg.price}`}</Text>
+          <View style={styles.cardActionsRight}>
+            <TouchableOpacity
+              style={styles.cardViewBtn}
+              onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}
+            >
+              <Text style={styles.cardViewBtnText}>View Details</Text>
             </TouchableOpacity>
-            {pkg.isPurchased ? (
-              <TouchableOpacity style={styles.openBtn} onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}>
-                <Text style={styles.openBtnText}>Open</Text>
-              </TouchableOpacity>
-            ) : pkg.price > 0 ? (
+            {pkg.price === 0 ? null : pkg.isPurchased ? (
               <TouchableOpacity
-                style={[styles.addToCartButton, isAdding && { opacity: 0.6 }]}
+                style={styles.cardOpenBtn}
+                onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}
+              >
+                <Text style={styles.cardOpenBtnText}>Open</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.cardCartBtn, isAdding && { opacity: 0.6 }]}
                 onPress={() => handleAddPackageToCart(pkg)}
                 disabled={isAdding}
               >
-                <Text style={styles.addToCartButtonText}>{isAdding ? 'Adding...' : 'Add to Cart'}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.freeButton} onPress={() => setSelectedPackage(pkg)}>
-                <Text style={styles.freeButtonText}>Start Free</Text>
+                <Text style={styles.cardCartBtnText}>{isAdding ? 'Adding...' : 'Add to Cart'}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -268,84 +241,6 @@ const TestsScreen: React.FC = () => {
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
       />
-
-      <Modal
-        visible={!!selectedPackage}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedPackage(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {selectedPackage ? (
-              <>
-                <View style={styles.modalHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.modalHeaderLabel}>PACKAGE</Text>
-                    <Text style={styles.modalHeaderTitle}>{selectedPackage.name}</Text>
-                    <View style={styles.modalHeaderMeta}>
-                      <Text style={styles.modalHeaderMetaText}>
-                        {selectedPackage.totalTests} test{selectedPackage.totalTests !== 1 ? 's' : ''}
-                        {selectedPackage.price > 0 ? ` • ₹${selectedPackage.price}` : ' • Free'}
-                      </Text>
-                      {selectedPackage.isPurchased ? (
-                        <TouchableOpacity style={styles.openPill} onPress={() => { setSelectedPackage(null); navigation.navigate('PackageDetail', { packageId: selectedPackage.id, packageName: selectedPackage.name }); }}>
-                          <Text style={styles.openPillText}>Open</Text>
-                        </TouchableOpacity>
-                      ) : selectedPackage.price > 0 ? (
-                        <TouchableOpacity
-                          style={styles.addPill}
-                          onPress={() => { handleAddPackageToCart(selectedPackage); setSelectedPackage(null); }}
-                        >
-                          <Text style={styles.addPillText}>Add Package to Cart</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                    </View>
-                    {selectedPackage.description ? (
-                      <Text style={styles.modalHeaderDesc}>{selectedPackage.description}</Text>
-                    ) : null}
-                  </View>
-                  <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setSelectedPackage(null)}>
-                    <Icons.Close size={20} color={colors.gray600} />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView style={styles.testList}>
-                  {selectedPackage.tests.map((test, idx) => (
-                    <View key={test.id} style={styles.testItem}>
-                      <View style={styles.testItemLeft}>
-                        <View style={styles.testIndex}><Text style={styles.testIndexText}>{idx + 1}</Text></View>
-                        <View style={{ flex: 1 }}>
-                          <View style={styles.testTitleRow}>
-                            <Text style={styles.testTitle}>{test.title}</Text>
-                            {selectedPackage.isPurchased ? (
-                              <View style={styles.includedPill}><Text style={styles.includedPillText}>Included</Text></View>
-                            ) : null}
-                          </View>
-                          <Text style={styles.testMeta}>
-                            {test.durationMinutes ? `${test.durationMinutes} min` : ''}
-                            {test.totalQuestions ? ` • ${test.totalQuestions} Q` : ''}
-                          </Text>
-                        </View>
-                      </View>
-                      {(selectedPackage.isPurchased || test.isPurchased || test.isDemo) && (
-                        <TouchableOpacity
-                          style={styles.startBtn}
-                          onPress={() => {
-                            setSelectedPackage(null);
-                            navigation.navigate('TestDetail', { testId: test.id });
-                          }}
-                        >
-                          <Text style={styles.startBtnText}>Open</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ))}
-                </ScrollView>
-              </>
-            ) : null}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -370,60 +265,22 @@ const styles = StyleSheet.create({
   seriesFilterChipTextActive: { color: colors.white },
   listContent: { paddingBottom: 16, gap: 12 },
   card: { borderRadius: 16, overflow: 'hidden', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.gray200, marginBottom: 12 },
-  cardHeader: { padding: 16 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: colors.white, marginBottom: 4 },
-  cardDescription: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 10 },
-  cardTags: { flexDirection: 'row', gap: 6 },
-  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)' },
-  tagText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
-  featuredTag: { backgroundColor: 'rgba(251,191,36,0.2)' },
-  featuredTagText: { color: '#fcd34d' },
-  cardBody: { padding: 12 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 10 },
-  priceValue: { fontSize: 24, fontWeight: '800', color: colors.gray900 },
-  priceLabel: { fontSize: 12, color: colors.gray500 },
-  freePrice: { fontSize: 24, fontWeight: '800', color: colors.success },
-  testTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 12 },
-  testTag: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4, backgroundColor: colors.gray100 },
-  testTagText: { fontSize: 10, color: colors.gray600 },
-  testTagMore: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4, backgroundColor: colors.gray50 },
-  testTagMoreText: { fontSize: 10, color: colors.gray400 },
-  actionRow: { flexDirection: 'row', gap: 8 },
-  viewButton: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', borderWidth: 1, borderColor: colors.gray300 },
-  viewButtonText: { fontSize: 13, fontWeight: '600', color: colors.gray700 },
-  addToCartButton: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: colors.primary },
-  addToCartButtonText: { fontSize: 13, fontWeight: '600', color: colors.white },
-  openBtn: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success },
-  openBtnText: { fontSize: 13, fontWeight: '600', color: colors.white },
-  freeButton: { flex: 1, borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: colors.success },
-  freeButtonText: { fontSize: 13, fontWeight: '600', color: colors.white },
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', minHeight: '40%' },
-  modalHeader: { flexDirection: 'row', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.gray200 },
-  modalHeaderLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 1, marginBottom: 4 },
-  modalHeaderTitle: { fontSize: 20, fontWeight: '700', color: colors.gray900, marginBottom: 8 },
-  modalHeaderMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  modalHeaderMetaText: { fontSize: 13, color: colors.gray600 },
-  openPill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: '#059669' },
-  openPillText: { fontSize: 12, fontWeight: '600', color: '#ffffff' },
-  addPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.primary },
-  addPillText: { fontSize: 12, fontWeight: '600', color: colors.white },
-  modalHeaderDesc: { fontSize: 13, color: colors.gray600, marginTop: 8 },
-  modalCloseBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.gray100, justifyContent: 'center', alignItems: 'center' },
-  modalCloseBtnText: { fontSize: 14, color: colors.gray500, fontWeight: '600' },
-  testList: { padding: 16 },
-  testItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.gray100, marginBottom: 8, backgroundColor: colors.gray50 },
-  testItemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 },
-  testIndex: { width: 22, height: 22, borderRadius: 6, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
-  testIndexText: { fontSize: 11, fontWeight: '700', color: colors.primary },
-  testTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  testTitle: { fontSize: 13, fontWeight: '600', color: colors.gray900, flexShrink: 1 },
-  includedPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: '#dcfce7' },
-  includedPillText: { fontSize: 10, fontWeight: '600', color: '#15803d' },
-  testMeta: { fontSize: 11, color: colors.gray500, marginTop: 2 },
-  startBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: colors.success, marginLeft: 8 },
-  startBtnText: { fontSize: 12, fontWeight: '600', color: colors.white },
+  cardImage: { width: '100%', height: 160, resizeMode: 'cover' },
+  cardImagePlaceholder: { width: '100%', height: 160, backgroundColor: colors.gray200, alignItems: 'center', justifyContent: 'center' },
+  cardPlaceholderIcon: { fontSize: 36, marginBottom: 4 },
+  cardPlaceholderText: { fontSize: 16, fontWeight: '700', color: colors.gray500 },
+  cardOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 14, backgroundColor: 'rgba(0,0,0,0.5)' },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: '#ffffff' },
+  cardSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.gray100 },
+  cardPrice: { fontSize: 17, fontWeight: '800', color: colors.gray900 },
+  cardActionsRight: { flexDirection: 'row', gap: 6 },
+  cardViewBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.gray300 },
+  cardViewBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray700 },
+  cardOpenBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: '#059669' },
+  cardOpenBtnText: { fontSize: 12, fontWeight: '600', color: '#ffffff' },
+  cardCartBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: colors.primary },
+  cardCartBtnText: { fontSize: 12, fontWeight: '600', color: '#ffffff' },
 });
 
 export default TestsScreen;

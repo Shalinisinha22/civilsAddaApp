@@ -194,7 +194,7 @@ export const api = {
         method: 'POST',
       }),
     submit: (id: string) =>
-      apiRequest<{ score: number; totalQuestions: number; percentage: number }>(
+      apiRequest<{ score: number; totalQuestions: number; percentage: number; rank?: number }>(
         `/attempts/${id}/submit`,
         {
           method: 'POST',
