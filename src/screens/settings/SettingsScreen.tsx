@@ -141,19 +141,9 @@ const SettingsScreen: React.FC = () => {
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.saveButtonText}>
-                {t('saveChanges') || 'Save Changes'}
+                Update Profile
               </Text>
             )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Account Actions */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>
-            {t('accountActions') || 'Account Actions'}
-          </Text>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Icons.Logout size={16} color={colors.danger} /><Text style={styles.logoutButtonText}> {t('logout')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -195,6 +185,12 @@ const SettingsScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Logout */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Icons.Logout size={20} color={colors.danger} />
+          <Text style={styles.logoutButtonText}>{t('logout')}</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -230,6 +226,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.gray200,
     padding: 16,
+    paddingBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -272,12 +269,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   logoutButton: {
-    width: '100%',
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
     backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
+    borderRadius: 12,
   },
   logoutButtonText: {
     color: colors.danger,

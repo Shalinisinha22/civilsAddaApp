@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import HTMLDescription from './HTMLDescription';
 import {
   View,
   Text,
@@ -117,9 +118,7 @@ const BannerCarousel: React.FC = () => {
         <View style={styles.overlay}>
           {item.title && <Text style={styles.overlayTitle}>{item.title}</Text>}
           {item.description && (
-            <Text style={styles.overlayDesc} numberOfLines={2}>
-              {item.description}
-            </Text>
+            <HTMLDescription html={item.description} style={styles.overlayDesc} numberOfLines={2} />
           )}
         </View>
       )}

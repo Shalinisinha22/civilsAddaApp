@@ -20,6 +20,13 @@ type AuthContextValue = {
   updateProfile: (data: { name?: string; email?: string; phone?: string }) => Promise<void>;
 };
 
+const mapUser = (apiUser: any): User => ({
+  id: apiUser.id,
+  name: apiUser.name,
+  email: apiUser.email || '',
+  phone: apiUser.phoneNumber,
+});
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const res = await api.auth.me();
         if (res.success && res.data?.user) {
-          setUser(res.data.user);
+          setUser(mapUser(res.data.user));
         }
       } catch {
         // ignore
@@ -47,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await api.auth.login(phoneNumber, password);
     if (res.success && res.data?.token && res.data.user) {
       await apiSetToken(res.data.token);
-      setUser(res.data.user);
+      setUser(mapUser(res.data.user));
     } else {
       throw new Error(res.message || 'Login failed');
     }
@@ -57,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await api.auth.register(name, phoneNumber, password, email);
     if (res.success && res.data?.token && res.data.user) {
       await apiSetToken(res.data.token);
-      setUser(res.data.user);
+      setUser(mapUser(res.data.user));
     } else {
       throw new Error(res.message || 'Registration failed');
     }
@@ -72,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: { name?: string; email?: string; phone?: string }) => {
     const res = await api.auth.updateProfile(data);
     if (res.success && res.data?.user) {
-      setUser(res.data.user);
+      setUser(mapUser(res.data.user));
     } else {
       throw new Error(res.message || 'Failed to update profile');
     }
@@ -86,7 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('[googleSignIn] Backend response:', JSON.stringify(res));
       if (res.success && res.data?.token && res.data.user) {
         await apiSetToken(res.data.token);
-        setUser(res.data.user);
+        setUser(mapUser(res.data.user));
       } else {
         await signOutFromGoogle();
         throw new Error(res.message || 'Google Sign-In failed');

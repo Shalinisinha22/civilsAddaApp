@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +19,7 @@ import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
 import type { AppNavigationParamList } from '@navigation/types';
 import { CategoryIcon, Icons } from '@components/Icons';
+import { resolveImageUrl } from '@config/env';
 
 type TestDetailRouteProp = RouteProp<AppNavigationParamList, 'TestDetail'>;
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
@@ -24,6 +27,14 @@ type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 type Question = { id: string; text: string; options: string[] };
 
 type Highlight = { icon?: string; title: string; description: string };
+
+type PackageSummary = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  image?: string | null;
+};
 
 type TestDetail = {
   test: {
@@ -33,11 +44,15 @@ type TestDetail = {
     category?: string;
     durationMinutes: number;
     totalQuestions: number;
+    positiveMarks: number;
+    negativeMarks: number;
+    unattemptedMarks: number;
     price: number;
     isPurchased?: boolean;
     isDemo?: boolean;
     highlights: Highlight[];
     instructions: string[];
+    packages: PackageSummary[];
   };
   questions: Question[];
 };
@@ -74,11 +89,15 @@ const TestDetailScreen: React.FC = () => {
               category: testData.test.category,
               durationMinutes: testData.test.durationMinutes,
               totalQuestions: testData.test.totalQuestions,
+              positiveMarks: testData.test.positiveMarks ?? 1,
+              negativeMarks: testData.test.negativeMarks ?? 0,
+              unattemptedMarks: testData.test.unattemptedMarks ?? 0,
               price: testData.test.price,
               isPurchased: testData.test.isPurchased,
               isDemo: testData.test.isDemo,
               highlights: testData.test.highlights || [],
               instructions: testData.test.instructions || [],
+              packages: testData.test.packages || [],
             },
             questions: (testData.questions || []).map((q: any, index: number) => ({
               id: q.id || String(index),
@@ -218,51 +237,50 @@ const TestDetailScreen: React.FC = () => {
             ) : null}
             <Text style={styles.title}>{test.title}</Text>
             {test.description ? (
-              <Text style={styles.description}>{test.description}</Text>
-            ) : null}
-          </View>
-          <View style={styles.headerBadges}>
-
-            {test.price === 0 && !test.isDemo ? (
-              <View style={styles.freeBadge}>
-                <Text style={styles.freeBadgeText}>In Package</Text>
-              </View>
+              <HTMLDescription html={test.description} style={styles.description} />
             ) : null}
           </View>
         </View>
 
-        <View style={styles.statsRow}>
+        {/* Stats grid: 2x2 */}
+        <View style={styles.statsGrid}>
           <View style={styles.statBox}>
-            <Icons.Questions size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>{test.totalQuestions}</Text>
             <Text style={styles.statLabel}>Questions</Text>
           </View>
           <View style={styles.statBox}>
-            <Icons.Clock size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>{test.durationMinutes}</Text>
             <Text style={styles.statLabel}>Minutes</Text>
           </View>
           <View style={styles.statBox}>
-            <Icons.Money size={20} color={colors.onSurface} />
             <Text style={styles.statValue}>
-              {test.isDemo ? 'Free' : test.price === 0 ? 'Package' : `₹${test.price}`}
+              +{test.positiveMarks} / {test.negativeMarks} / {test.unattemptedMarks}
             </Text>
-            <Text style={styles.statLabel}>Price</Text>
+            <Text style={styles.statLabel}>Marking (C/W/U)</Text>
           </View>
           <View style={styles.statBox}>
-            <Icons.Target size={20} color={colors.onSurface} />
-            <Text style={styles.statValue}>
-              {test.isDemo ? 'Demo' : test.price === 0 ? 'Package' : 'Paid'}
-            </Text>
-            <Text style={styles.statLabel}>Access</Text>
+            <View style={[styles.typePill, test.isDemo ? styles.typeDemo : test.price === 0 ? styles.typePackage : styles.typePaid]}>
+              <Text style={[styles.typePillText, test.isDemo ? styles.typeDemoText : test.price === 0 ? styles.typePackageText : styles.typePaidText]}>
+                {test.isDemo ? 'Demo' : test.price === 0 ? 'Package' : 'Premium'}
+              </Text>
+            </View>
+            <Text style={styles.statLabel}>Type</Text>
           </View>
         </View>
+
+        {/* Available in Package badge */}
+        {test.price === 0 && !test.isDemo ? (
+          <View style={styles.packageBadgeRow}>
+            <View style={styles.packageBadge}>
+              <Text style={styles.packageBadgeText}>Available in Package</Text>
+            </View>
+          </View>
+        ) : null}
       </View>
 
-      {/* What you'll get */}
+      {/* Highlights */}
       {test.highlights.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>What You'll Get</Text>
           {test.highlights.map((h, index) => (
             <View
               key={`${h.title}-${index}`}
@@ -271,10 +289,10 @@ const TestDetailScreen: React.FC = () => {
                 { backgroundColor: highlightColors[index % highlightColors.length] },
               ]}
             >
-              {h.icon ? <Text style={styles.highlightIcon}>{h.icon}</Text> : <Icons.Star size={20} color="#f59e0b" />}
+              {h.icon ? <Text style={styles.highlightIcon}>{h.icon}</Text> : <Icons.Star size={18} color="#f59e0b" />}
               <View style={{ flex: 1 }}>
                 <Text style={styles.highlightTitle}>{h.title}</Text>
-                <Text style={styles.highlightDescription}>{h.description}</Text>
+                <HTMLDescription html={h.description} style={styles.highlightDescription} />
               </View>
             </View>
           ))}
@@ -293,7 +311,7 @@ const TestDetailScreen: React.FC = () => {
                 style={[styles.instructionItem, { backgroundColor: palette.bg }]}
               >
                 <Text style={[styles.instructionIndex, { color: palette.badge }]}>
-                  {index + 1}.
+                  {String(index + 1).padStart(2, '0')}
                 </Text>
                 <Text style={styles.instructionText}>{inst}</Text>
               </View>
@@ -302,113 +320,103 @@ const TestDetailScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Action / purchase card */}
+      {/* Action card */}
       <View style={styles.card}>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceText}>
-            {test.isDemo ? 'FREE' : test.price === 0 ? 'Part of Package' : `₹${test.price}`}
-          </Text>
-          {test.price > 0 && <Text style={styles.priceSubText}>One-time purchase</Text>}
-        </View>
-
-        <View style={styles.actionsColumn}>
-          {test.price > 0 && !test.isPurchased && !test.isDemo ? (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleAddToCart}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.primaryButtonText}>Add to Cart</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <TouchableOpacity
-            style={[
-              styles.secondaryWideButton,
-              (!test.isDemo && !test.isPurchased) || starting
-                ? styles.secondaryButtonDisabled
-                : null,
-            ]}
-            disabled={(!test.isDemo && !test.isPurchased) || starting}
-            onPress={handleStartAttempt}
-            activeOpacity={0.9}
-          >
-            {starting ? (
-              <View style={styles.buttonLoadingContainer}>
-                <ActivityIndicator size="small" color={colors.white} style={styles.buttonSpinner} />
-                <Text style={styles.secondaryWideButtonText}>Starting...</Text>
+        {test.price === 0 && !test.isDemo && test.packages.length > 0 ? (
+          <>
+            {test.packages.map((pkg, i) => (
+              <View key={pkg.id || i} style={[styles.pkgRow, i > 0 ? { marginTop: 6 } : null]}>
+                {pkg.image ? (
+                  <Image source={{ uri: resolveImageUrl(pkg.image) }} style={styles.pkgImage} />
+                ) : (
+                  <View style={styles.pkgImagePlaceholder}>
+                    <Text style={styles.pkgImagePlaceholderText}>📦</Text>
+                  </View>
+                )}
+                <View style={styles.pkgInfo}>
+                  <Text style={styles.pkgName} numberOfLines={1}>{pkg.name}</Text>
+                  <Text style={styles.pkgPrice}>₹{pkg.price}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.pkgViewButton}
+                  onPress={() => navigation.navigate('Tests')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.pkgViewButtonText}>View</Text>
+                </TouchableOpacity>
               </View>
-            ) : test.isDemo ? (
-              <Text style={styles.secondaryWideButtonText}>
-                {isAuthenticated ? 'Start Demo Test' : 'Login to Start'}
-              </Text>
+            ))}
+            {test.isPurchased ? (
+              <TouchableOpacity
+                style={[styles.startButton, starting ? styles.disabledButton : null]}
+                onPress={handleStartAttempt}
+                disabled={starting}
+                activeOpacity={0.9}
+              >
+                {starting ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.startButtonText}>Start Test</Text>
+                )}
+              </TouchableOpacity>
             ) : (
-              <Text style={styles.secondaryWideButtonText}>
-                {test.isPurchased
-                  ? isAuthenticated ? 'Start Test Now' : 'Login to Start'
-                  : 'Purchase Package'}
+              <Text style={styles.purchaseHint}>
+                Purchase the package to access this test
               </Text>
             )}
-          </TouchableOpacity>
-
-          {test.price === 0 && !test.isDemo && (
+          </>
+        ) : test.isDemo ? (
+          <>
+            <Text style={styles.priceText}>Free Demo</Text>
             <TouchableOpacity
-              style={styles.tertiaryButton}
-              onPress={() => navigation.navigate('Tests')}
+              style={[styles.startButton, starting ? styles.disabledButton : null]}
+              onPress={handleStartAttempt}
+              disabled={starting}
               activeOpacity={0.9}
             >
-              <Text style={styles.tertiaryButtonText}>Browse Packages</Text>
+              {starting ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.startButtonText}>
+                  {isAuthenticated ? 'Start Demo Test' : 'Login to Start'}
+                </Text>
+              )}
             </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.benefits}>
-          <Text style={styles.benefitsTitle}>Includes:</Text>
-          <Text style={styles.benefitItem}>• Instant access after purchase</Text>
-          <Text style={styles.benefitItem}>• Unlimited attempts</Text>
-          <Text style={styles.benefitItem}>• Detailed solutions included</Text>
-          <Text style={styles.benefitItem}>• Performance analytics</Text>
-        </View>
-      </View>
-
-      {/* Overview & help */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Test Overview</Text>
-        <View style={styles.overviewRow}>
-          <Text style={styles.overviewLabel}>Category</Text>
-          <Text style={styles.overviewValue}>{formatCategory(test.category)}</Text>
-        </View>
-        <View style={styles.overviewRow}>
-          <Text style={styles.overviewLabel}>Questions</Text>
-          <Text style={styles.overviewValue}>{test.totalQuestions}</Text>
-        </View>
-        <View style={styles.overviewRow}>
-          <Text style={styles.overviewLabel}>Duration</Text>
-          <Text style={styles.overviewValue}>{test.durationMinutes} min</Text>
-        </View>
-        <View style={styles.overviewRow}>
-          <Text style={styles.overviewLabel}>Type</Text>
-          <Text style={styles.overviewValue}>
-            {test.isDemo ? 'Demo' : test.price === 0 ? 'Package' : 'Premium'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.helpCard}>
-        <Icons.Lightbulb size={22} color="#92400e" />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.helpTitle}>Need help?</Text>
-          <Text style={styles.helpText}>
-            Having trouble accessing the test or have questions? Visit your dashboard
-            to review purchases and attempts.
-          </Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Dashboard')}
-            style={styles.helpLinkButton}
-          >
-            <Text style={styles.helpLinkText}>Go to Dashboard →</Text>
-          </TouchableOpacity>
-        </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.priceText}>₹{test.price}</Text>
+            <Text style={styles.priceSubText}>One-time purchase</Text>
+            {!test.isPurchased ? (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handleAddToCart}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.primaryButtonText}>Add to Cart</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={[
+                styles.startButton,
+                (!test.isPurchased && !test.isDemo) || starting ? styles.disabledButton : null,
+              ]}
+              onPress={handleStartAttempt}
+              disabled={(!test.isPurchased && !test.isDemo) || starting}
+              activeOpacity={0.9}
+            >
+              {starting ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.startButtonText}>
+                  {test.isPurchased
+                    ? isAuthenticated ? 'Start Test' : 'Login to Start'
+                    : 'Purchase Test'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -420,9 +428,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray50,
   },
   scrollContent: {
-    padding: 16,
+    padding: 12,
     paddingBottom: 32,
-    gap: 12,
+    gap: 10,
   },
   center: {
     justifyContent: 'center',
@@ -446,113 +454,141 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: colors.gray200,
-    marginBottom: 12,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-    gap: 12,
+    marginBottom: 12,
   },
   categoryPill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     backgroundColor: '#eff6ff',
     borderRadius: 999,
     marginBottom: 8,
+    gap: 4,
   },
   categoryText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#1d4ed8',
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: colors.gray900,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   description: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.gray700,
   },
-  headerBadges: {
+  statsGrid: {
     flexDirection: 'row',
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  freeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#dcfce7',
-    alignSelf: 'flex-start',
-  },
-  freeBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#15803d',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     marginTop: 8,
   },
   statBox: {
-    flex: 1,
+    width: '50%',
     alignItems: 'center',
     paddingVertical: 8,
-  },
-  statEmoji: {
-    fontSize: 20,
-    marginBottom: 4,
+    borderRightWidth: 1,
+    borderRightColor: colors.gray100,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray100,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.gray900,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.gray500,
     marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  typePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginBottom: 2,
+  },
+  typeDemo: {
+    backgroundColor: '#fef3c7',
+  },
+  typeDemoText: {
+    color: '#92400e',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  typePackage: {
+    backgroundColor: '#dcfce7',
+  },
+  typePackageText: {
+    color: '#15803d',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  typePaid: {
+    backgroundColor: '#f3e8ff',
+  },
+  typePaidText: {
+    color: '#6b21a8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  packageBadgeRow: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  packageBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#dcfce7',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  packageBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#15803d',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.gray900,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   highlightItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: 10,
-    borderRadius: 12,
-    marginBottom: 8,
+    borderRadius: 10,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: colors.gray200,
+    gap: 8,
   },
   highlightIcon: {
-    fontSize: 20,
-    marginRight: 8,
-    marginTop: 2,
+    fontSize: 18,
+    marginTop: 1,
   },
   highlightTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.gray900,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   highlightDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.gray700,
   },
   instructionItem: {
@@ -560,138 +596,119 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: 10,
     borderRadius: 10,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   instructionIndex: {
     fontWeight: '700',
+    fontSize: 12,
     marginRight: 8,
-    marginTop: 2,
+    marginTop: 1,
+    minWidth: 20,
   },
   instructionText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.gray800,
-  },
-  priceRow: {
-    alignItems: 'center',
-    marginBottom: 16,
+    lineHeight: 18,
   },
   priceText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: colors.gray900,
+    textAlign: 'center',
+    marginBottom: 2,
   },
   priceSubText: {
     fontSize: 12,
     color: colors.gray500,
-    marginTop: 4,
-  },
-  actionsColumn: {
-    gap: 10,
-    marginBottom: 16,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
-  },
-  primaryButtonDisabled: {
-    backgroundColor: '#22c55e',
+    marginTop: 8,
   },
   primaryButtonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
-  secondaryWideButton: {
+  startButton: {
+    backgroundColor: '#1d4ed8',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#1d4ed8',
+    marginTop: 8,
   },
-  secondaryButtonDisabled: {
-    backgroundColor: colors.gray300,
-  },
-  secondaryWideButtonText: {
+  startButtonText: {
     color: colors.white,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  tertiaryButton: {
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: colors.gray100,
+  disabledButton: {
+    backgroundColor: colors.gray300,
   },
-  tertiaryButtonText: {
-    color: colors.gray800,
-    fontSize: 14,
-    fontWeight: '600',
+  purchaseHint: {
+    fontSize: 12,
+    color: colors.gray500,
+    textAlign: 'center',
+    marginTop: 8,
   },
-  benefits: {
-    borderTopWidth: 1,
-    borderTopColor: colors.gray200,
-    paddingTop: 12,
-    marginTop: 4,
-  },
-  benefitsTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.gray700,
-    marginBottom: 4,
-  },
-  benefitItem: {
-    fontSize: 13,
-    color: colors.gray600,
-  },
-  overviewRow: {
+  pkgRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: colors.gray50,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    gap: 10,
   },
-  overviewLabel: {
+  pkgImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.gray200,
+  },
+  pkgImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: colors.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pkgImagePlaceholderText: {
+    fontSize: 20,
+  },
+  pkgInfo: {
+    flex: 1,
+  },
+  pkgName: {
     fontSize: 13,
-    color: colors.gray600,
-  },
-  overviewValue: {
-    fontSize: 14,
     fontWeight: '600',
     color: colors.gray900,
   },
-  helpCard: {
-    flexDirection: 'row',
-    padding: 16,
-    marginTop: 4,
-    borderRadius: 16,
-    backgroundColor: '#fef3c7',
-    borderWidth: 1,
-    borderColor: '#fde68a',
-    gap: 10,
-    alignItems: 'flex-start',
+  pkgPrice: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.gray900,
+    marginTop: 1,
   },
-  helpIcon: {
-    fontSize: 22,
-    marginTop: 2,
+  pkgViewButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: colors.gray200,
   },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#92400e',
-    marginBottom: 4,
-  },
-  helpText: {
+  pkgViewButtonText: {
     fontSize: 13,
-    color: '#92400e',
-    marginBottom: 8,
-  },
-  helpLinkButton: {
-    alignSelf: 'flex-start',
-  },
-  helpLinkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1d4ed8',
+    fontWeight: '700',
+    color: colors.gray800,
   },
   secondaryButton: {
     marginTop: 8,
@@ -700,19 +717,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
-  },
-  buttonLoadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonSpinner: {
-    marginRight: 8,
-  },
-  purchasedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 

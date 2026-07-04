@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
 } from 'react-native';
@@ -41,20 +42,6 @@ const CategoryTestsScreen: React.FC = () => {
     }
   };
 
-  const handleStartTest = async (test: TestSummary) => {
-    try {
-      const res = await api.attempts.create(test.id);
-      if (res.success && res.data) {
-        navigation.navigate('TestAttempt', {
-          testId: test.id,
-          attemptId: (res.data as any).attemptId,
-        });
-      }
-    } catch (e: any) {
-      addToast(e?.message || 'Failed to start test', 'error');
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -94,7 +81,7 @@ const CategoryTestsScreen: React.FC = () => {
 
               </View>
               {test.description ? (
-                <Text style={styles.testDesc} numberOfLines={2}>{test.description}</Text>
+                <HTMLDescription html={test.description} style={styles.testDesc} />
               ) : null}
               <View style={styles.testMeta}>
                 {test.durationMinutes ? (
@@ -113,14 +100,17 @@ const CategoryTestsScreen: React.FC = () => {
                     {(isPurchased || test.isPurchased || test.isDemo) ? (
               <TouchableOpacity
                 style={styles.startBtn}
-                onPress={() => handleStartTest(test)}
+                onPress={() => navigation.navigate('TestDetail', { testId: test.id })}
               >
                 <Text style={styles.startBtnText}>Open</Text>
               </TouchableOpacity>
             ) : (
-              <View style={styles.lockedBadge}>
-                <Icons.Lock size={16} color={colors.gray400} />
-              </View>
+              <TouchableOpacity
+                style={styles.viewDetailsBtn}
+                onPress={() => navigation.navigate('TestDetail', { testId: test.id })}
+              >
+                <Text style={styles.viewDetailsBtnText}>View</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -156,6 +146,8 @@ const styles = StyleSheet.create({
   startBtnText: { fontSize: 13, fontWeight: '700', color: colors.white },
   lockedBadge: { paddingHorizontal: 8, paddingVertical: 4 },
   lockedBadgeText: { fontSize: 18 },
+  viewDetailsBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: colors.gray300 },
+  viewDetailsBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
   emptyContainer: { padding: 40, alignItems: 'center' },
   emptyText: { color: colors.gray500, fontSize: 15 },
 });

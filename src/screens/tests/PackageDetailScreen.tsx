@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +12,7 @@ import type { PackageCategorySummary, TestSummary } from '@types/models';
 import { useCart } from '@contexts/CartContext';
 import { useToast } from '@contexts/ToastContext';
 import { Icons, CategoryIcon } from '@components/Icons';
+import { resolveImageUrl } from '@config/env';
 
 type NavProp = NativeStackNavigationProp<AppNavigationParamList, 'PackageDetail'>;
 type RoutePropType = RouteProp<AppNavigationParamList, 'PackageDetail'>;
@@ -87,20 +89,6 @@ const PackageDetailScreen: React.FC = () => {
     setTimeout(() => setAddingToCart(false), 600);
   };
 
-  const handleStartTest = async (test: TestSummary) => {
-    try {
-      const res = await api.attempts.create(test.id);
-      if (res.success && res.data) {
-        navigation.navigate('TestAttempt', {
-          testId: test.id,
-          attemptId: (res.data as any).attemptId,
-        });
-      }
-    } catch (e: any) {
-      addToast(e?.message || 'Failed to start test', 'error');
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -130,9 +118,13 @@ const PackageDetailScreen: React.FC = () => {
         <Text style={styles.headerTitle}>{pkg.name}</Text>
       </View>
 
+      {pkg.image ? (
+        <Image source={{ uri: resolveImageUrl(pkg.image) }} style={styles.packageImage} />
+      ) : null}
+
       <View style={styles.packageInfo}>
         <Text style={styles.packageName}>{pkg.name}</Text>
-        {pkg.description ? <Text style={styles.packageDesc}>{pkg.description}</Text> : null}
+        {pkg.description ? <HTMLDescription html={pkg.description} style={styles.packageDesc} /> : null}
         <View style={styles.packageMeta}>
           <Text style={styles.packageMetaText}>
             {pkg.totalTests} test{pkg.totalTests !== 1 ? 's' : ''}
@@ -200,18 +192,21 @@ const PackageDetailScreen: React.FC = () => {
                           {test.totalQuestions ? ` • ${test.totalQuestions} Q` : ''}
                         </Text>
                       </View>
-                      {pkg.isPurchased || test.isPurchased || test.isDemo ? (
-                        <TouchableOpacity
-                          style={styles.startBtn}
-                          onPress={() => handleStartTest(test)}
-                        >
-                          <Text style={styles.startBtnText}>Open</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.lockedBadge}>
-                          <Icons.Lock size={16} color={colors.gray400} />
-                        </View>
-                      )}
+        {pkg.isPurchased || test.isPurchased || test.isDemo ? (
+          <TouchableOpacity
+            style={styles.startBtn}
+            onPress={() => navigation.navigate('TestDetail', { testId: test.id })}
+          >
+            <Text style={styles.startBtnText}>Open</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.viewDetailsBtn}
+            onPress={() => navigation.navigate('TestDetail', { testId: test.id })}
+          >
+            <Text style={styles.viewDetailsBtnText}>View</Text>
+          </TouchableOpacity>
+        )}
                     </View>
                   ))}
                 </View>
@@ -246,6 +241,7 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: 14, color: colors.gray500 },
   addToCartBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   addToCartBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  packageImage: { width: '100%', height: 180, resizeMode: 'cover' },
   purchasedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success, borderRadius: 12, paddingVertical: 14 },
   purchasedBadgeText: { color: colors.white, fontSize: 16, fontWeight: '700' },
   categoriesSection: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
@@ -266,6 +262,8 @@ const styles = StyleSheet.create({
   startBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: colors.success },
   startBtnText: { fontSize: 12, fontWeight: '700', color: colors.white },
   lockedBadge: { paddingHorizontal: 8, paddingVertical: 4 },
+  viewDetailsBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: colors.gray300 },
+  viewDetailsBtnText: { fontSize: 12, fontWeight: '600', color: colors.gray600 },
 });
 
 export default PackageDetailScreen;

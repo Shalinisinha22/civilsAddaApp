@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import HTMLDescription from '../../components/HTMLDescription';
 import {
   View,
   Text,
@@ -7,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,6 +19,7 @@ import { useToast } from '@contexts/ToastContext';
 import type { AppNavigationParamList } from '@navigation/types';
 import { Icons, Icon } from '@components/Icons';
 import BannerCarousel from '@components/BannerCarousel';
+import { resolveImageUrl } from '@config/env';
 
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 
@@ -26,6 +29,7 @@ type PackageSummary = {
   description: string;
   totalTests: number;
   price: number;
+  image?: string | null;
   isPurchased?: boolean;
 };
 
@@ -60,6 +64,7 @@ const HomeScreen: React.FC = () => {
             description: pkg.description || '',
             totalTests: pkg.totalTests || 0,
             price: pkg.price || 0,
+            image: pkg.image || null,
             isPurchased: !!pkg.isPurchased,
           }));
           setPackages(mapped);
@@ -169,67 +174,48 @@ const HomeScreen: React.FC = () => {
         <View style={styles.trendingGrid}>
           {trending.map((pkg) => (
             <View key={pkg.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{pkg.name}</Text>
-                  <View style={styles.packageTag}>
-                    <Text style={styles.packageTagText}>{pkg.totalTests} tests</Text>
-                  </View>
-                </View>
-                <View
-                  style={[
-                    styles.priceBadge,
-                    pkg.price === 0 && styles.priceBadgeFreeContainer,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.priceBadgeText,
-                      pkg.price === 0 && styles.priceBadgeFreeText,
-                    ]}
-                  >
-                    {pkg.price === 0 ? 'Free' : `₹${pkg.price}`}
-                  </Text>
-                </View>
-              </View>
-              {pkg.description ? (
-                <Text style={styles.description} numberOfLines={3}>
-                  {pkg.description}
-                </Text>
-              ) : null}
-              <View style={styles.metaRow}>
-                <Icons.Document size={14} color={colors.onSurfaceVariant} />
-                <Text style={styles.metaText}>
-                  {' '}{pkg.totalTests} test{pkg.totalTests !== 1 ? 's' : ''}
-                </Text>
-              </View>
-
-              <View style={styles.cardButtonsRow}>
-                <TouchableOpacity
-                  style={[styles.cardButton, styles.viewButton]}
-                  onPress={() =>
-                    navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })
-                  }
-                >
-                  <Text style={styles.viewButtonText}>View Details</Text>
-                </TouchableOpacity>
-                {pkg.isPurchased ? (
-                  <TouchableOpacity
-                    style={[styles.cardButton, styles.openButton]}
-                    onPress={() =>
-                      navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })
-                    }
-                  >
-                    <Text style={styles.openButtonText}>Open</Text>
-                  </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}
+                activeOpacity={0.9}
+              >
+                {pkg.image ? (
+                  <Image source={{ uri: resolveImageUrl(pkg.image) }} style={styles.cardImage} />
                 ) : (
-                  <TouchableOpacity
-                    style={[styles.cardButton, styles.addToCartButton]}
-                    onPress={() => handleAddToCart(pkg)}
-                  >
-                    <Text style={styles.addToCartText}>Add to Cart</Text>
-                  </TouchableOpacity>
+                  <View style={styles.cardImagePlaceholder}>
+                    <Text style={styles.cardImagePlaceholderIcon}>📦</Text>
+                    <Text style={styles.cardImagePlaceholderText}>{pkg.name.slice(0, 2).toUpperCase()}</Text>
+                  </View>
                 )}
+                <View style={styles.cardOverlay}>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{pkg.name}</Text>
+                  <Text style={styles.cardSubtitle}>{pkg.totalTests} test{pkg.totalTests !== 1 ? 's' : ''}</Text>
+                </View>
+              </TouchableOpacity>
+              <View style={styles.cardActions}>
+                <Text style={styles.cardPrice}>{pkg.price === 0 ? 'Free' : `₹${pkg.price}`}</Text>
+                <View style={styles.cardActionsRight}>
+                  <TouchableOpacity
+                    style={styles.cardViewBtn}
+                    onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}
+                  >
+                    <Text style={styles.cardViewBtnText}>View Details</Text>
+                  </TouchableOpacity>
+                  {pkg.price === 0 ? null : pkg.isPurchased ? (
+                    <TouchableOpacity
+                      style={styles.cardOpenBtn}
+                      onPress={() => navigation.navigate('PackageDetail', { packageId: pkg.id, packageName: pkg.name })}
+                    >
+                      <Text style={styles.cardOpenBtnText}>Open</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.cardCartBtn}
+                      onPress={() => handleAddToCart(pkg)}
+                    >
+                      <Text style={styles.cardCartBtnText}>Add to Cart</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
           ))}
@@ -358,117 +344,103 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   card: {
-    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.gray200,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+  cardImage: {
+    width: '100%',
+    height: 160,
+    resizeMode: 'contain',
+    backgroundColor: colors.white,
   },
-  categoryPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primaryContainer,
-    marginBottom: spacing.xs,
+  cardImagePlaceholder: {
+    width: '100%',
+    height: 160,
+    backgroundColor: colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  categoryText: {
-    ...typography.labelSmall,
-    color: colors.onPrimaryContainer,
-    fontWeight: '600',
+  cardImagePlaceholderIcon: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  cardImagePlaceholderText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.onSurfaceVariant,
+  },
+  cardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   cardTitle: {
-    ...typography.titleMedium,
-    color: colors.onSurface,
-    fontWeight: '600',
+    ...typography.titleSmall,
+    color: '#ffffff',
+    fontWeight: '700',
   },
-  packageTag: {
-    marginTop: 4,
-    alignSelf: 'flex-start',
+  cardSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
-  packageTagText: {
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-  },
-  priceBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceVariant,
-  },
-  priceBadgeFreeContainer: {
-    backgroundColor: colors.successLight + '30',
-  },
-  priceBadgeText: {
-    ...typography.labelSmall,
-    color: colors.onSurfaceVariant,
-    fontWeight: '600',
-  },
-  priceBadgeFreeText: {
-    color: colors.successDark,
-  },
-  description: {
-    ...typography.bodyMedium,
-    color: colors.onSurfaceVariant,
-    marginBottom: spacing.sm - 2,
-    marginTop: spacing.xs,
-  },
-  metaRow: {
+  cardActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray100,
   },
-  metaText: {
-    ...typography.bodySmall,
-    color: colors.onSurfaceVariant,
+  cardPrice: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: colors.gray900,
   },
-  cardButtonsRow: {
+  cardActionsRight: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+    gap: 6,
   },
-  cardButton: {
-    flex: 1,
-    borderRadius: borderRadius.sm,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
+  cardViewBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.gray300,
   },
-  viewButton: {
-    backgroundColor: colors.surfaceVariant,
-  },
-  viewButtonText: {
-    ...typography.labelMedium,
-    color: colors.onSurfaceVariant,
+  cardViewBtnText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: colors.gray700,
   },
-  addToCartButton: {
+  cardOpenBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#059669',
+  },
+  cardOpenBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  cardCartBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
     backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primaryDark,
   },
-  addToCartText: {
-    ...typography.labelMedium,
-    color: colors.onPrimary,
+  cardCartBtnText: {
+    fontSize: 12,
     fontWeight: '600',
-  },
-  openButton: {
-    backgroundColor: colors.success,
-    borderWidth: 1,
-    borderColor: colors.successDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  openButtonText: {
-    ...typography.labelMedium,
-    color: colors.onPrimary,
-    fontWeight: '600',
+    color: '#ffffff',
   },
   statsRow: {
     marginTop: spacing.md,
