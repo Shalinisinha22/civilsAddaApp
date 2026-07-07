@@ -69,6 +69,7 @@ const TestDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [existingAttempt, setExistingAttempt] = useState<any>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -76,11 +77,14 @@ const TestDetailScreen: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await api.tests.getById(testId);
+        const [testResponse, attemptsResponse] = await Promise.allSettled([
+          api.tests.getById(testId),
+          api.attempts.getUserAttempts(),
+        ]);
         if (!mounted) return;
 
-        if (response.success && response.data) {
-          const testData = response.data as any;
+        if (testResponse.status === 'fulfilled' && testResponse.value.success && testResponse.value.data) {
+          const testData = testResponse.value.data as any;
           setData({
             test: {
               id: testData.test.id,
@@ -105,6 +109,19 @@ const TestDetailScreen: React.FC = () => {
               options: q.options,
             })),
           });
+
+          if (attemptsResponse.status === 'fulfilled' && attemptsResponse.value.success && attemptsResponse.value.data) {
+            const userAttempts = attemptsResponse.value.data as any[];
+            const testAttempts = userAttempts.filter((a: any) => a.testId === testId);
+            testAttempts.sort(
+              (a: any, b: any) =>
+                new Date(b.createdAt || b.startedAt || 0).getTime() -
+                new Date(a.createdAt || a.startedAt || 0).getTime()
+            );
+            if (testAttempts.length > 0) {
+              setExistingAttempt(testAttempts[0]);
+            }
+          }
         } else {
           setError('Test not found');
         }
@@ -151,6 +168,13 @@ const TestDetailScreen: React.FC = () => {
     [],
   );
 
+  const attemptStatus: 'submitted' | 'in_progress' | 'none' = (() => {
+    if (!existingAttempt) return 'none';
+    if (existingAttempt.submittedAt) return 'submitted';
+    if (existingAttempt.startedAt) return 'in_progress';
+    return 'none';
+  })();
+
   const handleAddToCart = () => {
     if (!data) return;
     addToCart({
@@ -177,6 +201,22 @@ const TestDetailScreen: React.FC = () => {
 
     if (!data.test.isDemo && !data.test.isPurchased) {
       addToast('Please purchase this test before attempting', 'error');
+      return;
+    }
+
+    if (attemptStatus === 'submitted') {
+      navigation.navigate('TestAttempt', {
+        testId: data.test.id,
+        attemptId: existingAttempt.id || existingAttempt._id,
+      });
+      return;
+    }
+
+    if (attemptStatus === 'in_progress') {
+      navigation.navigate('TestAttempt', {
+        testId: data.test.id,
+        attemptId: existingAttempt.id || existingAttempt._id,
+      });
       return;
     }
 
@@ -356,7 +396,9 @@ const TestDetailScreen: React.FC = () => {
                 {starting ? (
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Text style={styles.startButtonText}>Start Test</Text>
+                  <Text style={styles.startButtonText}>
+                    {attemptStatus === 'submitted' ? 'View Results' : attemptStatus === 'in_progress' ? 'Continue Test' : 'Start Test'}
+                  </Text>
                 )}
               </TouchableOpacity>
             ) : (
@@ -378,7 +420,13 @@ const TestDetailScreen: React.FC = () => {
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.startButtonText}>
-                  {isAuthenticated ? 'Start Demo Test' : 'Login to Start'}
+                  {attemptStatus === 'submitted'
+                    ? 'View Results'
+                    : attemptStatus === 'in_progress'
+                    ? 'Continue Demo Test'
+                    : isAuthenticated
+                    ? 'Start Demo Test'
+                    : 'Login to Start'}
                 </Text>
               )}
             </TouchableOpacity>
@@ -399,17 +447,21 @@ const TestDetailScreen: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.startButton,
-                (!test.isPurchased && !test.isDemo) || starting ? styles.disabledButton : null,
+                (!test.isPurchased && !test.isDemo && attemptStatus === 'none') || starting ? styles.disabledButton : null,
               ]}
               onPress={handleStartAttempt}
-              disabled={(!test.isPurchased && !test.isDemo) || starting}
+              disabled={(!test.isPurchased && !test.isDemo && attemptStatus === 'none') || starting}
               activeOpacity={0.9}
             >
               {starting ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.startButtonText}>
-                  {test.isPurchased
+                  {attemptStatus === 'submitted'
+                    ? 'View Results'
+                    : attemptStatus === 'in_progress'
+                    ? 'Continue Test'
+                    : test.isPurchased
                     ? isAuthenticated ? 'Start Test' : 'Login to Start'
                     : 'Purchase Test'}
                 </Text>
