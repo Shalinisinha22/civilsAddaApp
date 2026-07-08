@@ -11,6 +11,7 @@ import {
   Alert,
   BackHandler,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import { resolveImageUrl } from '@config/env';
 import { api } from '@api/api';
 import { useAuth } from '@contexts/AuthContext';
 import { useToast } from '@contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
 import type { AppNavigationParamList } from '@navigation/types';
 import { Icons } from '@components/Icons';
 
@@ -60,6 +62,8 @@ const TestAttemptScreen: React.FC = () => {
   const { testId, attemptId } = route.params;
   const { isAuthenticated } = useAuth();
   const { addToast } = useToast();
+  const { t } = useTranslation();
+  const { width: screenWidth } = useWindowDimensions();
 
   const [detail, setDetail] = useState<TestDetail | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -90,8 +94,8 @@ const TestAttemptScreen: React.FC = () => {
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       Alert.alert(
-        'Test in Progress',
-        'You cannot go back during the test. Please submit the test first.',
+        t('testInProgress'),
+        t('cannotGoBackWarning'),
         [{ text: 'OK' }]
       );
       return true;
@@ -144,7 +148,7 @@ const TestAttemptScreen: React.FC = () => {
             })),
           });
         }
-        addToast("Time's up! Test auto-submitted.", 'info');
+        addToast(t('timeUpAutoSubmitted'), 'info');
       }
     } catch (err: any) {
       addToast(err.message || 'Failed to auto-submit test', 'error');
@@ -378,7 +382,7 @@ const TestAttemptScreen: React.FC = () => {
   };
 
   const onSubmit = async () => {
-    if (!attemptId || !detail || submitting) return;
+    if (!attemptId || !detail || submitting || submitted) return;
 
     setShowSubmitModal(false);
     setSubmitting(true);
@@ -416,7 +420,7 @@ const TestAttemptScreen: React.FC = () => {
             })),
           });
         }
-        addToast('Test submitted successfully!', 'success');
+        addToast(t('testSubmittedSuccess'), 'success');
       }
     } catch (err: any) {
       addToast(err.message || 'Failed to submit test', 'error');
@@ -438,7 +442,7 @@ const TestAttemptScreen: React.FC = () => {
         const durationSeconds = (detail?.test.durationMinutes || 60) * 60;
         setTimeRemaining(durationSeconds);
         startTimeRef.current = new Date();
-        addToast('Test started! Timer is now running.', 'success');
+        addToast(t('testStartedTimer'), 'success');
       }
     } catch (err: any) {
       addToast(err.message || 'Failed to start test', 'error');
@@ -492,7 +496,7 @@ const TestAttemptScreen: React.FC = () => {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading test...</Text>
+        <Text style={styles.loadingText}>{t('loadingTest')}</Text>
       </View>
     );
   }
@@ -500,12 +504,12 @@ const TestAttemptScreen: React.FC = () => {
   if (!detail) {
     return (
       <View style={[styles.container, styles.center]}>
-        <Text style={styles.errorText}>Test not found</Text>
+        <Text style={styles.errorText}>{t('testNotFound')}</Text>
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => navigation.navigate('TestDetail', { testId })}
         >
-          <Text style={styles.secondaryButtonText}>Go Back</Text>
+          <Text style={styles.secondaryButtonText}>{t('goBackBtn')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -518,17 +522,17 @@ const TestAttemptScreen: React.FC = () => {
         <View style={styles.instructionsHeader}>
           <View style={styles.instructionsBadge}>
             <Icons.Assignment size={18} color="#1d4ed8" />
-            <Text style={styles.instructionsBadgeText}> Test Instructions</Text>
+            <Text style={styles.instructionsBadgeText}> {t('testInstructions')}</Text>
           </View>
           <Text style={styles.instructionsTitle}>{detail.test.title}</Text>
           <View style={styles.instructionsMeta}>
             <View style={styles.instructionsMetaItem}>
               <Icons.Clock size={20} color={colors.onSurface} />
-              <Text style={styles.instructionsMetaText}>{detail.test.durationMinutes} minutes</Text>
+              <Text style={styles.instructionsMetaText}>{t('minutesDuration', { count: detail.test.durationMinutes })}</Text>
             </View>
             <View style={styles.instructionsMetaItem}>
               <Icons.Question size={20} color={colors.onSurface} />
-              <Text style={styles.instructionsMetaText}>{detail.questions.length} questions</Text>
+              <Text style={styles.instructionsMetaText}>{t('questionsCount', { count: detail.questions.length })}</Text>
             </View>
           </View>
         </View>
@@ -536,7 +540,7 @@ const TestAttemptScreen: React.FC = () => {
         <View style={styles.instructionsCard}>
           <View style={styles.instructionsTitleRow}>
             <Icons.Document size={24} color={colors.onSurface} />
-            <Text style={styles.instructionsCardTitle}> Important Instructions</Text>
+            <Text style={styles.instructionsCardTitle}> {t('importantInstructions')}</Text>
           </View>
 
           {testInstructions.map((instruction, idx) => (
@@ -551,19 +555,19 @@ const TestAttemptScreen: React.FC = () => {
           {detail.questions.some(q => q.textHindi || (q.optionsHindi?.length)) && (
             <View style={styles.languageSelector}>
               <Icons.Language size={20} color={colors.primary} />
-              <Text style={styles.languageLabel}>Select Language:</Text>
+              <Text style={styles.languageLabel}>{t('selectLanguage')}</Text>
               <View style={styles.languageOptions}>
                 <TouchableOpacity
                   style={[styles.languageOption, selectedLanguage === 'en' && styles.languageOptionActive]}
                   onPress={() => setSelectedLanguage('en')}
                 >
-                  <Text style={[styles.languageOptionText, selectedLanguage === 'en' && styles.languageOptionTextActive]}>English</Text>
+                  <Text style={[styles.languageOptionText, selectedLanguage === 'en' && styles.languageOptionTextActive]}>{t('english')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.languageOption, selectedLanguage === 'hi' && styles.languageOptionActive]}
                   onPress={() => setSelectedLanguage('hi')}
                 >
-                  <Text style={[styles.languageOptionText, selectedLanguage === 'hi' && styles.languageOptionTextActive]}>हिन्दी</Text>
+                  <Text style={[styles.languageOptionText, selectedLanguage === 'hi' && styles.languageOptionTextActive]}>{t('hindi')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -572,11 +576,11 @@ const TestAttemptScreen: React.FC = () => {
           <View style={styles.warningBox}>
             <Icons.Warning size={24} color="#92400e" />
             <View style={styles.warningContent}>
-              <Text style={styles.warningTitle}>Please Note:</Text>
-              <Text style={styles.warningText}>• The timer will start as soon as you click "Start Test"</Text>
-              <Text style={styles.warningText}>• You cannot pause the test once started</Text>
-              <Text style={styles.warningText}>• Make sure you have a stable internet connection</Text>
-              <Text style={styles.warningText}>• Do not close the app during the test</Text>
+              <Text style={styles.warningTitle}>{t('pleaseNote')}</Text>
+              <Text style={styles.warningText}>{t('timerStartWarning')}</Text>
+              <Text style={styles.warningText}>{t('noPauseWarning')}</Text>
+              <Text style={styles.warningText}>{t('stableInternetWarning')}</Text>
+              <Text style={styles.warningText}>{t('noCloseWarning')}</Text>
             </View>
           </View>
 
@@ -585,7 +589,7 @@ const TestAttemptScreen: React.FC = () => {
               style={styles.instructionsBackButton}
               onPress={() => navigation.navigate('TestDetail', { testId })}
             >
-              <Text style={styles.instructionsBackButtonText}>← Go Back</Text>
+              <Text style={styles.instructionsBackButtonText}>{t('goBack')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.instructionsStartButton, starting && styles.instructionsStartButtonDisabled]}
@@ -595,10 +599,10 @@ const TestAttemptScreen: React.FC = () => {
               {starting ? (
                 <View style={styles.buttonLoadingContainer}>
                   <ActivityIndicator size="small" color={colors.white} style={styles.buttonSpinner} />
-                  <Text style={styles.instructionsStartButtonText}>Starting...</Text>
+                  <Text style={styles.instructionsStartButtonText}>{t('starting')}</Text>
                 </View>
               ) : (
-                <Text style={styles.instructionsStartButtonText}>Start Test →</Text>
+                <Text style={styles.instructionsStartButtonText}>{t('startTest')} →</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -619,7 +623,7 @@ const TestAttemptScreen: React.FC = () => {
             <View style={styles.warningBannerRow}>
               <Icons.Warning size={14} color={colors.white} />
               <Text style={styles.warningBannerText}>
-                {' '}Exam in Progress - Do not close this app. Your progress is being saved automatically.
+                {' '}{t('examInProgress')}
               </Text>
             </View>
           </Text>
@@ -633,7 +637,7 @@ const TestAttemptScreen: React.FC = () => {
             {detail.test.title}
           </Text>
           <Text style={styles.headerSubtitle}>
-            Question {currentQuestionIndex + 1} of {detail.questions.length}
+            {t('questionOf', { current: currentQuestionIndex + 1, total: detail.questions.length })}
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -660,7 +664,7 @@ const TestAttemptScreen: React.FC = () => {
               onPress={() => setShowSubmitModal(true)}
               disabled={submitting}
             >
-              <Text style={styles.submitButtonText}>Submit</Text>
+              <Text style={styles.submitButtonText}>{t('submit')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -672,34 +676,34 @@ const TestAttemptScreen: React.FC = () => {
             {/* Results Summary */}
             <View style={styles.resultsContainer}>
               <Icons.Celebration size={64} color={colors.primary} />
-              <Text style={styles.resultsTitle}>Test Submitted Successfully!</Text>
-              <Text style={styles.resultsSubtitle}>Your results are displayed below</Text>
+              <Text style={styles.resultsTitle}>{t('testSubmitted')}</Text>
+              <Text style={styles.resultsSubtitle}>{t('resultsSubtitle')}</Text>
 
               <View style={styles.resultsGrid}>
                 <View style={styles.resultCard}>
-                  <Text style={styles.resultCardLabel}>Score</Text>
+                  <Text style={styles.resultCardLabel}>{t('score')}</Text>
                   <Text style={styles.resultCardValue}>
                     {Number(submitted.score).toFixed(2)}/{submitted.totalQuestions}
                   </Text>
                 </View>
                 <View style={[styles.resultCard, styles.resultCardGreen]}>
-                  <Text style={styles.resultCardLabel}>Percentage</Text>
+                  <Text style={styles.resultCardLabel}>{t('percentage')}</Text>
                   <Text style={styles.resultCardValue}>{submitted.percentage}%</Text>
                 </View>
                 <View style={[styles.resultCard, styles.resultCardPurple]}>
-                  <Text style={styles.resultCardLabel}>Rank</Text>
+                  <Text style={styles.resultCardLabel}>{t('rank')}</Text>
                   <Text style={styles.resultCardValue}>#{submitted.rank || '—'}</Text>
                 </View>
                 <View style={[styles.resultCard, styles.resultCardOrange]}>
-                  <Text style={styles.resultCardLabel}>Performance</Text>
+                  <Text style={styles.resultCardLabel}>{t('performance')}</Text>
                   <Text style={styles.resultCardValue}>
                     {submitted.percentage >= 80
-                      ? 'Excellent'
+                      ? t('excellent')
                       : submitted.percentage >= 60
-                      ? 'Good'
+                      ? t('good')
                       : submitted.percentage >= 40
-                      ? 'Average'
-                      : 'Needs Improvement'}
+                      ? t('average')
+                      : t('needsImprovement')}
                   </Text>
                 </View>
               </View>
@@ -709,14 +713,14 @@ const TestAttemptScreen: React.FC = () => {
                   style={styles.resultsButton}
                   onPress={() => navigation.navigate('Attempts')}
                 >
-                  <Text style={styles.resultsButtonText}>View All Attempts</Text>
+                  <Text style={styles.resultsButtonText}>{t('viewAllAttempts')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.resultsButton, styles.resultsButtonSecondary]}
                   onPress={() => navigation.navigate('Dashboard')}
                 >
                   <Text style={[styles.resultsButtonText, styles.resultsButtonTextSecondary]}>
-                    Back to Dashboard
+                    {t('backToDashboard')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -736,12 +740,12 @@ const TestAttemptScreen: React.FC = () => {
                         <Text style={styles.reviewBadgeText}>{index + 1}</Text>
                       </View>
                       <Text style={[styles.reviewStatus, isCorrect ? styles.reviewStatusCorrect : isAnswered ? styles.reviewStatusWrong : styles.reviewStatusUnanswered]}>
-                        {isCorrect ? 'Correct' : isAnswered ? 'Incorrect' : 'Not Answered'}
+                        {isCorrect ? t('correct') : isAnswered ? t('incorrect') : t('notAnswered')}
                       </Text>
                     </View>
 
                     <Text style={styles.reviewQuestionText}>
-                      {question.text}
+                      {selectedLanguage === 'hi' && question.textHindi ? question.textHindi : question.text}
                     </Text>
 
                     {question.diagram && (
@@ -756,7 +760,7 @@ const TestAttemptScreen: React.FC = () => {
                     )}
 
                     <View style={styles.reviewOptionsContainer}>
-                      {question.options.map((option, optIdx) => {
+                      {(selectedLanguage === 'hi' && question.optionsHindi ? question.optionsHindi : question.options).map((option, optIdx) => {
                         const isUserAns = userAnswer === optIdx;
                         const isCorrectOpt = correctAnswer === optIdx;
                         const optionLabel = String.fromCharCode(65 + optIdx);
@@ -774,9 +778,9 @@ const TestAttemptScreen: React.FC = () => {
                               <Text style={[styles.reviewOptionText, (isCorrectOpt || (isUserAns && !isCorrect)) && styles.reviewOptionTextActive]}>
                                 {option}
                               </Text>
-                              {isCorrectOpt && <Text style={styles.reviewCorrectLabel}>Correct</Text>}
-                              {isUserAns && !isCorrect && <Text style={styles.reviewWrongLabel}>Your Answer</Text>}
-                              {isUserAns && isCorrect && <Text style={styles.reviewCorrectLabel}>Your Answer</Text>}
+                              {isCorrectOpt && <Text style={styles.reviewCorrectLabel}>{t('correct')}</Text>}
+                              {isUserAns && !isCorrect && <Text style={styles.reviewWrongLabel}>{t('yourAnswer')}</Text>}
+                              {isUserAns && isCorrect && <Text style={styles.reviewCorrectLabel}>{t('yourAnswer')}</Text>}
                             </View>
                           </View>
                         );
@@ -787,9 +791,9 @@ const TestAttemptScreen: React.FC = () => {
                       <View style={styles.reviewCorrectAnswerBox}>
                         <Text style={styles.reviewCorrectAnswerIcon}>✓</Text>
                         <View>
-                          <Text style={styles.reviewCorrectAnswerTitle}>Correct Answer</Text>
+                          <Text style={styles.reviewCorrectAnswerTitle}>{t('correctAnswer')}</Text>
                           <Text style={styles.reviewCorrectAnswerText}>
-                            Option {String.fromCharCode(65 + correctAnswer)}: {question.options[correctAnswer]}
+                            {t('option')} {String.fromCharCode(65 + correctAnswer)}: {(selectedLanguage === 'hi' && question.optionsHindi ? question.optionsHindi : question.options)[correctAnswer]}
                           </Text>
                         </View>
                       </View>
@@ -797,11 +801,11 @@ const TestAttemptScreen: React.FC = () => {
 
                     {(selectedLanguage === 'hi' && question.descriptionHindi) || question.description ? (
                       <View style={styles.reviewExplanationBox}>
-                        <Text style={styles.reviewExplanationIcon}>💡</Text>
-                        <View>
-                          <Text style={styles.reviewExplanationTitle}>Explanation</Text>
-                          <HTMLDescription html={selectedLanguage === 'hi' && question.descriptionHindi ? question.descriptionHindi : question.description} style={styles.reviewExplanationText} />
+                        <View style={styles.reviewExplanationHeader}>
+                          <Text style={styles.reviewExplanationIcon}>💡</Text>
+                          <Text style={styles.reviewExplanationTitle}>{t('explanation')}</Text>
                         </View>
+                        <HTMLDescription html={selectedLanguage === 'hi' && question.descriptionHindi ? question.descriptionHindi : question.description} style={styles.reviewExplanationText} contentWidth={screenWidth - 96} />
                       </View>
                     ) : null}
                   </View>
@@ -815,13 +819,13 @@ const TestAttemptScreen: React.FC = () => {
             <View style={styles.questionHeader}>
               <View style={styles.questionHeaderLeft}>
                 <View style={styles.questionNumberBadge}>
-                  <Text style={styles.questionNumberText}>Question {currentQuestionIndex + 1}</Text>
+                  <Text style={styles.questionNumberText}>{t('questionLabel', { number: currentQuestionIndex + 1 })}</Text>
                 </View>
                 {markedQuestions.has(currentQuestion.id) && (
                   <View style={styles.markedBadge}>
                     <View style={styles.markedBadgeRow}>
                       <Icons.Star size={12} color="#92400e" />
-                      <Text style={styles.markedBadgeText}> Marked for Review</Text>
+                      <Text style={styles.markedBadgeText}> {t('markedForReview')}</Text>
                     </View>
                   </View>
                 )}
@@ -849,7 +853,7 @@ const TestAttemptScreen: React.FC = () => {
                         markedQuestions.has(currentQuestion.id) && styles.markButtonTextActive,
                       ]}
                     >
-                      {markedQuestions.has(currentQuestion.id) ? ' Marked' : 'Mark for Review'}
+                      {markedQuestions.has(currentQuestion.id) ? ' ' + t('marked') : t('markForReview')}
                     </Text>
                   </View>
                 </Text>
@@ -904,32 +908,33 @@ const TestAttemptScreen: React.FC = () => {
                 onPress={goToPrevious}
                 disabled={currentQuestionIndex === 0}
               >
-                <Text
-                  style={[
-                    styles.navButtonText,
-                    currentQuestionIndex === 0 && styles.navButtonTextDisabled,
-                  ]}
-                >
-                  ← Previous
-                </Text>
+                  <Text
+                    style={[
+                      styles.navButtonText,
+                      styles.navButtonTextPrev,
+                      currentQuestionIndex === 0 && styles.navButtonTextDisabled,
+                    ]}
+                  >
+                    {t('previous')}
+                  </Text>
               </TouchableOpacity>
 
               <View style={styles.statsContainer}>
                 <Text style={styles.statsText}>
-                  {stats.answered} answered • {stats.unanswered} unanswered • {stats.marked} marked
+                  {t('answeredStats', { answered: stats.answered, unanswered: stats.unanswered, marked: stats.marked })}
                 </Text>
               </View>
 
               {currentQuestionIndex < detail.questions.length - 1 ? (
                 <TouchableOpacity style={styles.navButton} onPress={goToNext}>
-                  <Text style={styles.navButtonText}>Next →</Text>
+                  <Text style={styles.navButtonText}>{t('next')}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
                   style={[styles.navButton, styles.navButtonSubmit]}
                   onPress={() => setShowSubmitModal(true)}
                 >
-                  <Text style={styles.navButtonText}>Review & Submit</Text>
+                  <Text style={styles.navButtonText}>{t('reviewAndSubmit')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -939,31 +944,31 @@ const TestAttemptScreen: React.FC = () => {
         {/* Question Palette */}
         {!submitted && (
           <View style={styles.paletteContainer}>
-            <Text style={styles.paletteTitle}>Question Palette</Text>
+            <Text style={styles.paletteTitle}>{t('questionPalette')}</Text>
 
             {/* Statistics */}
             <View style={styles.paletteStats}>
               <View style={styles.paletteStat}>
                 <Text style={styles.paletteStatValue}>{stats.answered}</Text>
-                <Text style={styles.paletteStatLabel}>Answered</Text>
+                <Text style={styles.paletteStatLabel}>{t('answered')}</Text>
               </View>
               <View style={[styles.paletteStat, styles.paletteStatRed]}>
                 <Text style={[styles.paletteStatValue, styles.paletteStatValueRed]}>
                   {stats.unanswered}
                 </Text>
-                <Text style={styles.paletteStatLabel}>Unanswered</Text>
+                <Text style={styles.paletteStatLabel}>{t('unanswered')}</Text>
               </View>
               <View style={[styles.paletteStat, styles.paletteStatYellow]}>
                 <Text style={[styles.paletteStatValue, styles.paletteStatValueYellow]}>
                   {stats.marked}
                 </Text>
-                <Text style={styles.paletteStatLabel}>Marked</Text>
+                <Text style={styles.paletteStatLabel}>{t('marked')}</Text>
               </View>
               <View style={[styles.paletteStat, styles.paletteStatGray]}>
                 <Text style={[styles.paletteStatValue, styles.paletteStatValueGray]}>
                   {stats.notVisited}
                 </Text>
-                <Text style={styles.paletteStatLabel}>Not Visited</Text>
+                <Text style={styles.paletteStatLabel}>{t('notVisited')}</Text>
               </View>
             </View>
 
@@ -1013,35 +1018,34 @@ const TestAttemptScreen: React.FC = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirm Submission</Text>
-            <Text style={styles.modalText}>Are you sure you want to submit the test?</Text>
+            <Text style={styles.modalTitle}>{t('confirmSubmission')}</Text>
+            <Text style={styles.modalText}>{t('areYouSureSubmit')}</Text>
 
             <View style={styles.modalWarning}>
               <Text style={styles.modalWarningText}>
-                <Text style={styles.modalWarningBold}>Note:</Text> Once submitted, you cannot change
-                your answers.
+                <Text style={styles.modalWarningBold}>{t('noteColon')}</Text> {t('onceSubmittedCannotChange')}
               </Text>
             </View>
 
             <View style={styles.modalStats}>
               <View style={styles.modalStatRow}>
-                <Text style={styles.modalStatLabel}>Answered:</Text>
+                <Text style={styles.modalStatLabel}>{t('answeredColon')}</Text>
                 <Text style={styles.modalStatValue}>{stats.answered}</Text>
               </View>
               <View style={styles.modalStatRow}>
-                <Text style={styles.modalStatLabel}>Unanswered:</Text>
+                <Text style={styles.modalStatLabel}>{t('unansweredColon')}</Text>
                 <Text style={[styles.modalStatValue, styles.modalStatValueRed]}>
                   {stats.unanswered}
                 </Text>
               </View>
               <View style={styles.modalStatRow}>
-                <Text style={styles.modalStatLabel}>Marked:</Text>
+                <Text style={styles.modalStatLabel}>{t('markedColon')}</Text>
                 <Text style={[styles.modalStatValue, styles.modalStatValueYellow]}>
                   {stats.marked}
                 </Text>
               </View>
               <View style={styles.modalStatRow}>
-                <Text style={styles.modalStatLabel}>Not Visited:</Text>
+                <Text style={styles.modalStatLabel}>{t('notVisitedColon')}</Text>
                 <Text style={styles.modalStatValue}>{stats.notVisited}</Text>
               </View>
             </View>
@@ -1051,7 +1055,7 @@ const TestAttemptScreen: React.FC = () => {
                 style={styles.modalButtonCancel}
                 onPress={() => setShowSubmitModal(false)}
               >
-                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                <Text style={styles.modalButtonCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalButtonSubmit}
@@ -1059,7 +1063,7 @@ const TestAttemptScreen: React.FC = () => {
                 disabled={submitting}
               >
                 <Text style={styles.modalButtonSubmitText}>
-                  {submitting ? 'Submitting...' : 'Submit Test'}
+                  {submitting ? t('submitting') : t('submitTest')}
       </Text>
               </TouchableOpacity>
             </View>
@@ -1185,7 +1189,8 @@ const styles = StyleSheet.create({
   questionContainer: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.gray200,
@@ -1335,6 +1340,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.white,
+  },
+  navButtonTextPrev: {
+    color: colors.gray900,
   },
   navButtonTextDisabled: {
     color: colors.gray400,
@@ -1844,15 +1852,16 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   reviewSection: {
-    padding: 16,
-    paddingTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   reviewCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gray200,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
     marginBottom: 16,
   },
   reviewCardHeader: {
@@ -1998,14 +2007,17 @@ const styles = StyleSheet.create({
     color: '#166534',
   },
   reviewExplanationBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
     padding: 12,
     borderRadius: 8,
     backgroundColor: '#fefce8',
     borderWidth: 1,
     borderColor: '#fde68a',
+  },
+  reviewExplanationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
   },
   reviewExplanationIcon: {
     fontSize: 16,
@@ -2014,12 +2026,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#92400e',
-    marginBottom: 2,
   },
   reviewExplanationText: {
     fontSize: 14,
     color: '#78350f',
-    lineHeight: 20,
+    lineHeight: 22,
+    textAlign: 'justify',
   },
 });
 

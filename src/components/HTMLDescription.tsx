@@ -5,16 +5,17 @@ interface HTMLDescriptionProps {
   html: string | null | undefined;
   style?: TextStyle;
   numberOfLines?: number;
+  contentWidth?: number;
 }
 
-export default function HTMLDescription({ html, style, numberOfLines }: HTMLDescriptionProps) {
+export default function HTMLDescription({ html, style, numberOfLines, contentWidth }: HTMLDescriptionProps) {
   const { width } = useWindowDimensions();
 
   if (!html) return null;
 
   return (
     <RenderHTML
-      contentWidth={width - 32}
+      contentWidth={contentWidth ?? width - 32}
       source={{ html }}
       baseStyle={{ ...(style as any), margin: 0, padding: 0 }}
       defaultTextProps={{ numberOfLines }}

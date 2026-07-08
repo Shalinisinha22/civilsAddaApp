@@ -50,6 +50,7 @@ type TestDetail = {
     price: number;
     isPurchased?: boolean;
     isDemo?: boolean;
+    isSubmitted?: boolean;
     highlights: Highlight[];
     instructions: string[];
     packages: PackageSummary[];
@@ -99,6 +100,7 @@ const TestDetailScreen: React.FC = () => {
               price: testData.test.price,
               isPurchased: testData.test.isPurchased,
               isDemo: testData.test.isDemo,
+              isSubmitted: testData.test.isSubmitted,
               highlights: testData.test.highlights || [],
               instructions: testData.test.instructions || [],
               packages: testData.test.packages || [],
@@ -170,7 +172,10 @@ const TestDetailScreen: React.FC = () => {
 
   const attemptStatus: 'submitted' | 'in_progress' | 'none' = (() => {
     if (!existingAttempt) return 'none';
-    if (existingAttempt.submittedAt) return 'submitted';
+    if (existingAttempt.submittedAt) {
+      if (data?.test.isSubmitted === false) return 'none';
+      return 'submitted';
+    }
     if (existingAttempt.startedAt) return 'in_progress';
     return 'none';
   })();
@@ -199,24 +204,24 @@ const TestDetailScreen: React.FC = () => {
       return;
     }
 
+    if (existingAttempt && existingAttempt.submittedAt && data?.test.isSubmitted !== false) {
+      navigation.navigate('TestAttempt', {
+        testId: data.test.id,
+        attemptId: existingAttempt.attemptId,
+      });
+      return;
+    }
+
+    if (existingAttempt && existingAttempt.startedAt && !existingAttempt.submittedAt) {
+      navigation.navigate('TestAttempt', {
+        testId: data.test.id,
+        attemptId: existingAttempt.attemptId,
+      });
+      return;
+    }
+
     if (!data.test.isDemo && !data.test.isPurchased) {
       addToast('Please purchase this test before attempting', 'error');
-      return;
-    }
-
-    if (attemptStatus === 'submitted') {
-      navigation.navigate('TestAttempt', {
-        testId: data.test.id,
-        attemptId: existingAttempt.id || existingAttempt._id,
-      });
-      return;
-    }
-
-    if (attemptStatus === 'in_progress') {
-      navigation.navigate('TestAttempt', {
-        testId: data.test.id,
-        attemptId: existingAttempt.id || existingAttempt._id,
-      });
       return;
     }
 

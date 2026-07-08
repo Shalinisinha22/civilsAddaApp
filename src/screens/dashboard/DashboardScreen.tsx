@@ -222,7 +222,7 @@ const DashboardScreen: React.FC = () => {
           </View>
           <Text style={styles.statValue}>
             {stats.averageScore > 0
-              ? `${stats.averageScore.toFixed(1)}%`
+              ? `${stats.averageScore.toFixed(2)}%`
               : 'N/A'}
           </Text>
           <Text style={styles.statHint}>Overall performance</Text>
@@ -327,7 +327,7 @@ const DashboardScreen: React.FC = () => {
                       {isCompleted && (
                         <View style={styles.attemptScore}>
                           <Text style={styles.scoreText}>
-                            {attempt.score}/{attempt.totalQuestions}
+                            {Number(attempt.score).toFixed(2)}/{attempt.totalQuestions}
                           </Text>
                         </View>
                       )}

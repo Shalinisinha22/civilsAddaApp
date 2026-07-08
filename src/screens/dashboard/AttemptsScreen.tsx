@@ -176,10 +176,10 @@ const AttemptsScreen: React.FC = () => {
                           { color: getScoreColor(attempt.score, attempt.totalQuestions) },
                         ]}
                       >
-                        {attempt.score}/{attempt.totalQuestions}
+                        {Number(attempt.score).toFixed(2)}/{attempt.totalQuestions}
                       </Text>
                       <Text style={styles.scorePercentage}>
-                        {percentage.toFixed(1)}%
+                        {percentage.toFixed(2)}%
                       </Text>
                     </View>
                   ) : (

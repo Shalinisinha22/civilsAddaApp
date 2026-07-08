@@ -103,14 +103,14 @@ const PerformanceScreen: React.FC = () => {
             <View style={[styles.statCard, { borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }]}>
               <Text style={styles.statLabel}>Overall Average</Text>
               <Text style={[styles.statValue, { color: colors.primary }]}>
-                {averageScore.toFixed(1)}%
+                {averageScore.toFixed(2)}%
               </Text>
               <Text style={styles.statHint}>{completed.length} completed tests</Text>
             </View>
             <View style={[styles.statCard, { borderColor: '#bbf7d0', backgroundColor: '#f0fdf4' }]}>
               <Text style={styles.statLabel}>Best Score</Text>
               <Text style={[styles.statValue, { color: colors.success }]}>
-                {bestScore.toFixed(1)}%
+                {bestScore.toFixed(2)}%
               </Text>
               <Text style={styles.statHint}>Your top performance</Text>
             </View>
@@ -128,12 +128,12 @@ const PerformanceScreen: React.FC = () => {
                   </View>
                   <View style={styles.testScores}>
                     <Text style={styles.testLabel}>Avg</Text>
-                    <Text style={styles.testValue}>{perf.avg.toFixed(1)}%</Text>
+                    <Text style={styles.testValue}>{perf.avg.toFixed(2)}%</Text>
                   </View>
                   <View style={styles.testScores}>
                     <Text style={styles.testLabel}>Best</Text>
                     <Text style={[styles.testValue, { color: colors.success }]}>
-                      {perf.best.toFixed(1)}%
+                      {perf.best.toFixed(2)}%
                     </Text>
                   </View>
                 </View>
