@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   cardImage: {
     width: '100%',
     height: 160,
-    resizeMode: 'cover',
+    resizeMode: 'contain',
   },
   cardImagePlaceholder: {
     width: '100%',

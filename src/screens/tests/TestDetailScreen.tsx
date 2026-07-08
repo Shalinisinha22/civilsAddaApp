@@ -730,6 +730,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 8,
     backgroundColor: colors.gray200,
+    resizeMode: 'contain',
   },
   pkgImagePlaceholder: {
     width: 48,

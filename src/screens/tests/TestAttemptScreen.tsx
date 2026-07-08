@@ -39,6 +39,8 @@ type Question = {
   description?: string | null;
   descriptionHindi?: string | null;
   diagram?: string | null;
+  fontSize?: number;
+  isBold?: boolean;
 };
 
 type TestDetail = {
@@ -128,13 +130,13 @@ const TestAttemptScreen: React.FC = () => {
         const refreshed = await api.attempts.getById(attemptId);
         if (refreshed.success && refreshed.data) {
           const refreshedData = refreshed.data;
-          setDetail({
-            test: {
-              id: refreshedData.attempt.testId,
-              title: refreshedData.attempt.testTitle,
-              durationMinutes: refreshedData.attempt.durationMinutes || 60,
-            },
-            questions: refreshedData.questions.map((q: any) => ({
+        setDetail({
+          test: {
+            id: refreshedData.attempt.testId,
+            title: refreshedData.attempt.testTitle,
+            durationMinutes: refreshedData.attempt.durationMinutes || 60,
+          },
+          questions: refreshedData.questions.map((q: any) => ({
               id: q.id,
               text: q.text,
               textHindi: q.textHindi || null,
@@ -145,6 +147,8 @@ const TestAttemptScreen: React.FC = () => {
               description: q.description || null,
               descriptionHindi: q.descriptionHindi || null,
               diagram: q.diagram || null,
+              fontSize: q.fontSize || 18,
+              isBold: q.isBold || false,
             })),
           });
         }
@@ -241,7 +245,7 @@ const TestAttemptScreen: React.FC = () => {
             title: attemptData.attempt.testTitle,
             durationMinutes: attemptData.attempt.durationMinutes || 60,
           },
-          questions: attemptData.questions.map((q: any) => ({
+            questions: attemptData.questions.map((q: any) => ({
             id: q.id,
             text: q.text,
             textHindi: q.textHindi || null,
@@ -252,6 +256,8 @@ const TestAttemptScreen: React.FC = () => {
             description: q.description || null,
             descriptionHindi: q.descriptionHindi || null,
             diagram: q.diagram || null,
+            fontSize: q.fontSize || 18,
+            isBold: q.isBold || false,
           })),
         });
 
@@ -417,6 +423,8 @@ const TestAttemptScreen: React.FC = () => {
               description: q.description || null,
               descriptionHindi: q.descriptionHindi || null,
               diagram: q.diagram || null,
+              fontSize: q.fontSize || 18,
+              isBold: q.isBold || false,
             })),
           });
         }
@@ -744,9 +752,11 @@ const TestAttemptScreen: React.FC = () => {
                       </Text>
                     </View>
 
-                    <Text style={styles.reviewQuestionText}>
-                      {selectedLanguage === 'hi' && question.textHindi ? question.textHindi : question.text}
-                    </Text>
+                    <HTMLDescription
+                      html={selectedLanguage === 'hi' && question.textHindi ? question.textHindi : question.text}
+                      style={styles.reviewQuestionText}
+                      contentWidth={screenWidth - 96}
+                    />
 
                     {question.diagram && (
                       <View style={styles.diagramContainer}>
@@ -861,9 +871,7 @@ const TestAttemptScreen: React.FC = () => {
             </View>
 
             {/* Question Text */}
-            <Text style={styles.questionText}>
-              {selectedLanguage === 'hi' && currentQuestion.textHindi ? currentQuestion.textHindi : currentQuestion.text}
-            </Text>
+            <HTMLDescription html={selectedLanguage === 'hi' && currentQuestion.textHindi ? currentQuestion.textHindi : currentQuestion.text} style={styles.questionText} contentWidth={screenWidth - 64} />
 
             {/* Diagram */}
             {currentQuestion.diagram && (
@@ -1259,11 +1267,8 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   questionText: {
-    fontSize: 18,
-    fontWeight: '600',
     color: colors.gray900,
     marginBottom: 20,
-    lineHeight: 26,
   },
   diagramContainer: {
     marginBottom: 20,

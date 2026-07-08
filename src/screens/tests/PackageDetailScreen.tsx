@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: 14, color: colors.gray500 },
   addToCartBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   addToCartBtnText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  packageImage: { width: '100%', height: 180, resizeMode: 'cover' },
+  packageImage: { width: '100%', height: 180, resizeMode: 'contain' },
   purchasedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.success, borderRadius: 12, paddingVertical: 14 },
   purchasedBadgeText: { color: colors.white, fontSize: 16, fontWeight: '700' },
   categoriesSection: { paddingHorizontal: 16, paddingBottom: 24, gap: 10 },
