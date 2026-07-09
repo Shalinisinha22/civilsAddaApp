@@ -21,6 +21,41 @@ import type { AppNavigationParamList } from '@navigation/types';
 import { CategoryIcon, Icons } from '@components/Icons';
 import { resolveImageUrl } from '@config/env';
 
+const formatMarkingValue = (value: number | string | undefined) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || Math.abs(num) < 1e-6) return '0';
+  const sign = num < 0 ? '-' : '';
+  const absValue = Math.abs(num);
+  const rounded = Math.round(absValue);
+  if (Math.abs(absValue - rounded) < 1e-6) return `${sign}${rounded}`;
+  let bestNumerator = 0;
+  let bestDenominator = 1;
+  let bestError = Number.POSITIVE_INFINITY;
+  const gcd = (a: number, b: number): number => {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y !== 0) {
+      const temp = y;
+      y = x % y;
+      x = temp;
+    }
+    return x || 1;
+  };
+  for (let denominator = 1; denominator <= 100; denominator += 1) {
+    const numerator = Math.round(absValue * denominator);
+    const error = Math.abs(absValue - numerator / denominator);
+    if (error < bestError - 1e-6) {
+      bestError = error;
+      bestNumerator = numerator;
+      bestDenominator = denominator;
+    }
+  }
+  const divisor = gcd(bestNumerator, bestDenominator);
+  return Math.abs(absValue - (bestNumerator / divisor) / (bestDenominator / divisor)) <= 0.0005
+    ? `${sign}${bestNumerator / divisor}/${bestDenominator / divisor}`
+    : `${sign}${absValue.toFixed(2).replace(/\.?0+$/, '')}`;
+};
+
 type TestDetailRouteProp = RouteProp<AppNavigationParamList, 'TestDetail'>;
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 
@@ -299,7 +334,7 @@ const TestDetailScreen: React.FC = () => {
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statValue}>
-              +{test.positiveMarks} / {test.negativeMarks} / {test.unattemptedMarks}
+              +{formatMarkingValue(test.positiveMarks)} / {formatMarkingValue(test.negativeMarks)} / {formatMarkingValue(test.unattemptedMarks)}
             </Text>
             <Text style={styles.statLabel}>Marking (C/W/U)</Text>
           </View>

@@ -129,7 +129,9 @@
   "option": "विकल्प",
   "timeUpAutoSubmitted": "समय समाप्त! टेस्ट ऑटो-सबमिट हुआ।",
   "testSubmittedSuccess": "टेस्ट सफलतापूर्वक सबमिट हुआ!",
-  "testStartedTimer": "टेस्ट शुरू! टाइमर अब चल रहा है।"
+  "testStartedTimer": "टेस्ट शुरू! टाइमर अब चल रहा है।",
+  "appMinimizedWarningTitle": "चेतावनी!",
+  "appMinimizedWarningMessage": "आपने टेस्ट के दौरान ऐप को मिनिमाइज किया या छोड़ दिया। यह चेतावनी {{count}}/{{max}} है। तीसरी चेतावनी पर टेस्ट स्वचालित रूप से सबमिट हो जाएगा।"
 }
 
 

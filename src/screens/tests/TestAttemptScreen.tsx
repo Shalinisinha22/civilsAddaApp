@@ -12,6 +12,8 @@ import {
   BackHandler,
   Image,
   useWindowDimensions,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -90,6 +92,23 @@ const TestAttemptScreen: React.FC = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<Date | null>(null);
 
+  const warningsCountRef = useRef(0);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState ?? 'active');
+  const testStartedRef = useRef(false);
+  const submittedRef = useRef<any>(null);
+  const submittingRef = useRef(false);
+  const timerInitializedRef = useRef(false);
+  const alertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleAutoSubmitRef = useRef<() => void>(() => {});
+
+  const isBackgroundState = (state?: AppStateStatus | null) =>
+    state === 'inactive' || state === 'background';
+
+  // Keep refs in sync with state
+  useEffect(() => { testStartedRef.current = testStarted; }, [testStarted]);
+  useEffect(() => { submittedRef.current = submitted; }, [submitted]);
+  useEffect(() => { submittingRef.current = submitting; }, [submitting]);
+
   // Prevent back navigation during test
   useEffect(() => {
     if (!testStarted || submitted) return;
@@ -104,7 +123,7 @@ const TestAttemptScreen: React.FC = () => {
     });
 
     return () => backHandler.remove();
-  }, [testStarted, submitted]);
+  }, [testStarted, submitted, t]);
 
   // Auto-submit handler
   const handleAutoSubmit = useCallback(async () => {
@@ -159,11 +178,77 @@ const TestAttemptScreen: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [submitted, submitting, attemptId, detail, addToast]);
+  }, [submitted, submitting, attemptId, detail, addToast, t]);
+
+  // Keep handleAutoSubmitRef in sync
+  useEffect(() => { handleAutoSubmitRef.current = handleAutoSubmit; }, [handleAutoSubmit]);
+
+  // App minimization warning and auto-submit system
+  // All actions (alerts, auto-submit) happen ONLY when user returns to foreground
+  useEffect(() => {
+    if (!testStarted) return;
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      const previousState = appStateRef.current;
+      appStateRef.current = nextAppState;
+
+      // Skip if test is not active
+      if (!testStartedRef.current || submittedRef.current || submittingRef.current) {
+        return;
+      }
+
+      // User LEFT the app (active -> background)
+      if (previousState === 'active' && isBackgroundState(nextAppState)) {
+        warningsCountRef.current += 1;
+      }
+
+      // User RETURNED to the app (background/inactive -> active)
+      if (isBackgroundState(previousState) && nextAppState === 'active') {
+        const count = warningsCountRef.current;
+
+        if (count >= 3) {
+          // 3rd warning: auto-submit
+          handleAutoSubmitRef.current();
+        } else if (count > 0) {
+          // 1st or 2nd warning: show a warning toast after the app has fully resumed.
+          if (alertTimeoutRef.current) {
+            clearTimeout(alertTimeoutRef.current);
+          }
+          alertTimeoutRef.current = setTimeout(() => {
+            addToast(
+              t('appMinimizedWarningMessage', { count, max: 3 }),
+              'warning',
+              t('appMinimizedWarningTitle')
+            );
+            alertTimeoutRef.current = null;
+          }, 300);
+        }
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+      if (alertTimeoutRef.current) {
+        clearTimeout(alertTimeoutRef.current);
+        alertTimeoutRef.current = null;
+      }
+    };
+  // Only depend on testStarted and t — refs handle everything else
+  }, [testStarted, t]);
 
   // Auto-submit when time reaches 0
   useEffect(() => {
-    if (detail && !submitted && !submitting && timeRemaining === 0 && attemptId && testStarted) {
+    if (
+      detail &&
+      timerInitializedRef.current &&
+      !submitted &&
+      !submitting &&
+      timeRemaining === 0 &&
+      attemptId &&
+      testStarted
+    ) {
       handleAutoSubmit();
     }
   }, [timeRemaining, submitted, submitting, detail, attemptId, testStarted, handleAutoSubmit]);
@@ -219,6 +304,7 @@ const TestAttemptScreen: React.FC = () => {
   const fetchAttempt = async () => {
     try {
       setLoading(true);
+      timerInitializedRef.current = false;
       const response = await api.attempts.getById(attemptId);
 
       if (response.success && response.data) {
@@ -284,9 +370,11 @@ const TestAttemptScreen: React.FC = () => {
           const remaining = Math.max(0, durationSeconds - elapsedSeconds);
           setTimeRemaining(remaining);
           startTimeRef.current = startedAt;
+          timerInitializedRef.current = true;
         } else if (!attemptData.attempt.submittedAt) {
           const durationSeconds = (attemptData.attempt.durationMinutes || 60) * 60;
           setTimeRemaining(durationSeconds);
+          timerInitializedRef.current = true;
         }
 
         // If already submitted, show results
@@ -450,6 +538,8 @@ const TestAttemptScreen: React.FC = () => {
         const durationSeconds = (detail?.test.durationMinutes || 60) * 60;
         setTimeRemaining(durationSeconds);
         startTimeRef.current = new Date();
+        warningsCountRef.current = 0;
+        timerInitializedRef.current = true;
         addToast(t('testStartedTimer'), 'success');
       }
     } catch (err: any) {

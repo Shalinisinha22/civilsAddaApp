@@ -129,7 +129,9 @@
   "option": "Option",
   "timeUpAutoSubmitted": "Time's up! Test auto-submitted.",
   "testSubmittedSuccess": "Test submitted successfully!",
-  "testStartedTimer": "Test started! Timer is now running."
+  "testStartedTimer": "Test started! Timer is now running.",
+  "appMinimizedWarningTitle": "Warning!",
+  "appMinimizedWarningMessage": "You minimized or left the app during the test. This is warning {{count}}/{{max}}. The test will be automatically submitted on the {{max}}rd warning."
 }
 
 
