@@ -76,8 +76,14 @@ const TestAttemptScreen: React.FC = () => {
   const [submitted, setSubmitted] = useState<{
     score: number;
     totalQuestions: number;
+    totalMarks?: number;
     percentage: number;
+    correctAnswers?: number;
+    incorrectAnswers?: number;
+    unattemptedAnswers?: number;
+    notAttemptedAnswers?: number;
     rank?: number;
+    totalParticipants?: number;
   } | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
   const [loading, setLoading] = useState(true);
@@ -142,8 +148,14 @@ const TestAttemptScreen: React.FC = () => {
         setSubmitted({
           score: response.data.score,
           totalQuestions: response.data.totalQuestions,
+          totalMarks: response.data.totalMarks,
           percentage: response.data.percentage,
+          correctAnswers: response.data.correctAnswers,
+          incorrectAnswers: response.data.incorrectAnswers,
+          unattemptedAnswers: response.data.unattemptedAnswers,
+          notAttemptedAnswers: response.data.notAttemptedAnswers,
           rank: response.data.rank,
+          totalParticipants: response.data.totalParticipants,
         });
         // Re-fetch attempt to get correct answers for review
         const refreshed = await api.attempts.getById(attemptId);
@@ -382,8 +394,14 @@ const TestAttemptScreen: React.FC = () => {
           setSubmitted({
             score: attemptData.attempt.score || 0,
             totalQuestions: attemptData.attempt.totalQuestions,
+            totalMarks: attemptData.attempt.totalMarks,
             percentage: attemptData.attempt.percentage || 0,
+            correctAnswers: attemptData.attempt.correctAnswers,
+            incorrectAnswers: attemptData.attempt.incorrectAnswers,
+            unattemptedAnswers: attemptData.attempt.unattemptedAnswers,
+            notAttemptedAnswers: attemptData.attempt.notAttemptedAnswers,
             rank: attemptData.attempt.rank,
+            totalParticipants: attemptData.attempt.totalParticipants,
           });
         }
       }
@@ -487,8 +505,14 @@ const TestAttemptScreen: React.FC = () => {
         setSubmitted({
           score: response.data.score,
           totalQuestions: response.data.totalQuestions,
+          totalMarks: response.data.totalMarks,
           percentage: response.data.percentage,
+          correctAnswers: response.data.correctAnswers,
+          incorrectAnswers: response.data.incorrectAnswers,
+          unattemptedAnswers: response.data.unattemptedAnswers,
+          notAttemptedAnswers: response.data.notAttemptedAnswers,
           rank: response.data.rank,
+          totalParticipants: response.data.totalParticipants,
         });
         // Re-fetch attempt to get correct answers for review
         const refreshed = await api.attempts.getById(attemptId);
@@ -781,7 +805,7 @@ const TestAttemptScreen: React.FC = () => {
                 <View style={styles.resultCard}>
                   <Text style={styles.resultCardLabel}>{t('score')}</Text>
                   <Text style={styles.resultCardValue}>
-                    {Number(submitted.score).toFixed(2)}/{submitted.totalQuestions}
+                    {Number(submitted.score).toFixed(2)}/{submitted.totalMarks ?? submitted.totalQuestions}
                   </Text>
                 </View>
                 <View style={[styles.resultCard, styles.resultCardGreen]}>
@@ -790,7 +814,7 @@ const TestAttemptScreen: React.FC = () => {
                 </View>
                 <View style={[styles.resultCard, styles.resultCardPurple]}>
                   <Text style={styles.resultCardLabel}>{t('rank')}</Text>
-                  <Text style={styles.resultCardValue}>#{submitted.rank || '—'}</Text>
+                  <Text style={styles.resultCardValue}>#{submitted.rank || '—'}{submitted.totalParticipants ? ` / ${submitted.totalParticipants}` : ''}</Text>
                 </View>
                 <View style={[styles.resultCard, styles.resultCardOrange]}>
                   <Text style={styles.resultCardLabel}>{t('performance')}</Text>
@@ -805,6 +829,27 @@ const TestAttemptScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
+
+              {(submitted.correctAnswers !== undefined) && (
+                <View style={styles.resultsGrid}>
+                  <View style={[styles.resultCard, styles.resultCardGreen]}>
+                    <Text style={styles.resultCardLabel}>{t('correct')}</Text>
+                    <Text style={styles.resultCardValue}>{submitted.correctAnswers}</Text>
+                  </View>
+                  <View style={[styles.resultCard, styles.resultCardRed]}>
+                    <Text style={styles.resultCardLabel}>{t('incorrect')}</Text>
+                    <Text style={styles.resultCardValue}>{submitted.incorrectAnswers}</Text>
+                  </View>
+                  <View style={[styles.resultCard, styles.resultCardOrange]}>
+                    <Text style={styles.resultCardLabel}>{t('skipped')}</Text>
+                    <Text style={styles.resultCardValue}>{submitted.unattemptedAnswers}</Text>
+                  </View>
+                  <View style={[styles.resultCard, styles.resultCardYellow]}>
+                    <Text style={styles.resultCardLabel}>{t('notAttempted')}</Text>
+                    <Text style={styles.resultCardValue}>{submitted.notAttemptedAnswers}</Text>
+                  </View>
+                </View>
+              )}
 
               <View style={styles.resultsButtons}>
                 <TouchableOpacity
@@ -829,16 +874,17 @@ const TestAttemptScreen: React.FC = () => {
               {detail.questions.map((question, index) => {
                 const userAnswer = question.selectedAnswer;
                 const correctAnswer = question.correctAnswer;
-                const isCorrect = userAnswer === correctAnswer;
-                const isAnswered = userAnswer !== null && userAnswer !== undefined;
+                const isNotAttempted = userAnswer === -1;
+                const isCorrect = !isNotAttempted && userAnswer === correctAnswer;
+                const isAnswered = !isNotAttempted && userAnswer !== null && userAnswer !== undefined;
                 return (
                   <View key={question.id} style={styles.reviewCard}>
                     <View style={styles.reviewCardHeader}>
-                      <View style={[styles.reviewBadge, isCorrect ? styles.reviewBadgeCorrect : isAnswered ? styles.reviewBadgeWrong : styles.reviewBadgeUnanswered]}>
+                      <View style={[styles.reviewBadge, isCorrect ? styles.reviewBadgeCorrect : isAnswered ? styles.reviewBadgeWrong : isNotAttempted ? styles.reviewBadgeUnanswered : styles.reviewBadgeUnanswered]}>
                         <Text style={styles.reviewBadgeText}>{index + 1}</Text>
                       </View>
-                      <Text style={[styles.reviewStatus, isCorrect ? styles.reviewStatusCorrect : isAnswered ? styles.reviewStatusWrong : styles.reviewStatusUnanswered]}>
-                        {isCorrect ? t('correct') : isAnswered ? t('incorrect') : t('notAnswered')}
+                      <Text style={[styles.reviewStatus, isCorrect ? styles.reviewStatusCorrect : isAnswered ? styles.reviewStatusWrong : isNotAttempted ? styles.reviewStatusUnanswered : styles.reviewStatusUnanswered]}>
+                        {isCorrect ? t('correct') : isAnswered ? t('incorrect') : isNotAttempted ? t('notAttempted') : t('notAnswered')}
                       </Text>
                     </View>
 
@@ -1599,6 +1645,14 @@ const styles = StyleSheet.create({
   resultCardOrange: {
     backgroundColor: '#fff7ed',
     borderColor: '#fdba74',
+  },
+  resultCardRed: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fca5a5',
+  },
+  resultCardYellow: {
+    backgroundColor: '#fefce8',
+    borderColor: '#facc15',
   },
   resultCardLabel: {
     fontSize: 12,

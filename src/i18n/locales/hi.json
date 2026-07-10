@@ -80,6 +80,8 @@
   "correct": "सही",
   "incorrect": "गलत",
   "notAnswered": "उत्तर नहीं दिया",
+  "skipped": "छोड़ दिया",
+  "notAttempted": "प्रयास नहीं किया",
   "yourAnswer": "आपका उत्तर",
   "correctAnswer": "सही उत्तर",
   "explanation": "व्याख्या",

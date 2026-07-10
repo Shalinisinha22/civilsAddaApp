@@ -80,6 +80,8 @@
   "correct": "Correct",
   "incorrect": "Incorrect",
   "notAnswered": "Not Answered",
+  "skipped": "Skipped",
+  "notAttempted": "Not Attempted",
   "yourAnswer": "Your Answer",
   "correctAnswer": "Correct Answer",
   "explanation": "Explanation",
