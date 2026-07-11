@@ -1043,6 +1043,27 @@ const TestAttemptScreen: React.FC = () => {
                   <Text style={styles.optionText}>{option}</Text>
                 </TouchableOpacity>
               ))}
+              
+              {/* Not Attempted - Option E */}
+              <TouchableOpacity
+                style={[
+                  styles.option,
+                  answers[currentQuestion.id] === -1 && styles.optionNotAttempted,
+                ]}
+                onPress={() => onChange(currentQuestion.id, -1)}
+              >
+                <View
+                  style={[
+                    styles.optionRadio,
+                    answers[currentQuestion.id] === -1 && styles.optionRadioNotAttempted,
+                  ]}
+                >
+                  {answers[currentQuestion.id] === -1 && <View style={[styles.optionRadioInner, styles.optionRadioInnerNotAttempted]} />}
+                </View>
+                <Text style={[styles.optionText, answers[currentQuestion.id] === -1 && styles.optionTextNotAttempted]}>
+                  {t('notAttempted')}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Navigation Buttons */}
@@ -1450,6 +1471,19 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: colors.primary,
+  },
+  optionNotAttempted: {
+    borderColor: '#f97316',
+    backgroundColor: '#fff7ed',
+  },
+  optionRadioNotAttempted: {
+    borderColor: '#f97316',
+  },
+  optionRadioInnerNotAttempted: {
+    backgroundColor: '#f97316',
+  },
+  optionTextNotAttempted: {
+    color: '#9a3412',
   },
   optionText: {
     flex: 1,
