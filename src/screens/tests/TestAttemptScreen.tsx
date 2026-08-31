@@ -52,6 +52,19 @@ type TestDetail = {
     durationMinutes: number;
   };
   questions: Question[];
+  subjects?: SubjectScore[];
+};
+
+type SubjectScore = {
+  name: string;
+  questionIds?: string[];
+  totalQuestions: number;
+  totalMarks: number;
+  correctAnswers?: number;
+  incorrectAnswers?: number;
+  unattemptedAnswers?: number;
+  notAttemptedAnswers?: number;
+  score?: number;
 };
 
 type QuestionStatus = {
@@ -84,9 +97,13 @@ const TestAttemptScreen: React.FC = () => {
     notAttemptedAnswers?: number;
     rank?: number;
     totalParticipants?: number;
+    subjectScores?: SubjectScore[];
   } | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
+  const [activeSubject, setActiveSubject] = useState<string>('__all__');
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'correct' | 'wrong' | 'skipped'>('all');
   const [loading, setLoading] = useState(true);
+  const [visibleReviewCount, setVisibleReviewCount] = useState(10);
   const [submitting, setSubmitting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0); // in seconds
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -94,26 +111,39 @@ const TestAttemptScreen: React.FC = () => {
   const [testInstructions, setTestInstructions] = useState<string[]>([]);
   const [testStarted, setTestStarted] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [resuming, setResuming] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<Date | null>(null);
+  const durationSecondsRef = useRef<number>(0);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  const warningsCountRef = useRef(0);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState ?? 'active');
   const testStartedRef = useRef(false);
   const submittedRef = useRef<any>(null);
   const submittingRef = useRef(false);
   const timerInitializedRef = useRef(false);
-  const alertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleAutoSubmitRef = useRef<() => void>(() => {});
+  const attemptIdRef = useRef(attemptId);
+  const pausedRef = useRef(false);
+  const manualPausedRef = useRef(false);
 
   const isBackgroundState = (state?: AppStateStatus | null) =>
     state === 'inactive' || state === 'background';
 
   // Keep refs in sync with state
+  useEffect(() => { attemptIdRef.current = attemptId; }, [attemptId]);
   useEffect(() => { testStartedRef.current = testStarted; }, [testStarted]);
   useEffect(() => { submittedRef.current = submitted; }, [submitted]);
   useEffect(() => { submittingRef.current = submitting; }, [submitting]);
+  useEffect(() => { manualPausedRef.current = paused; }, [paused]);
+
+  // Scroll to top of the question when navigating to another question
+  useEffect(() => {
+    if (!submitted && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: false });
+    }
+  }, [currentQuestionIndex, submitted]);
 
   // Prevent back navigation during test
   useEffect(() => {
@@ -131,6 +161,54 @@ const TestAttemptScreen: React.FC = () => {
     return () => backHandler.remove();
   }, [testStarted, submitted, t]);
 
+  // Load the submitted attempt's result from the server (score + answers for review)
+  const loadSubmittedResult = useCallback(async (attemptIdToLoad: string) => {
+    try {
+      const refreshed = await api.attempts.getById(attemptIdToLoad);
+      if (refreshed.success && refreshed.data) {
+        const refreshedData = refreshed.data;
+        const attempt = refreshedData.attempt;
+        setDetail({
+          test: {
+            id: attempt.testId,
+            title: attempt.testTitle,
+            durationMinutes: attempt.durationMinutes || 60,
+          },
+          questions: refreshedData.questions.map((q: any) => ({
+            id: q.id,
+            text: q.text,
+            textHindi: q.textHindi || null,
+            options: q.options,
+            optionsHindi: q.optionsHindi && q.optionsHindi.length > 0 ? q.optionsHindi : null,
+            selectedAnswer: q.selectedAnswer,
+            correctAnswer: q.correctAnswer,
+            description: q.description || null,
+            descriptionHindi: q.descriptionHindi || null,
+            diagram: q.diagram || null,
+            fontSize: q.fontSize || 18,
+            isBold: q.isBold || false,
+          })),
+          subjects: refreshedData.subjects || undefined,
+        });
+        setSubmitted({
+          score: attempt.score,
+          totalQuestions: attempt.totalQuestions,
+          totalMarks: attempt.totalMarks,
+          percentage: attempt.percentage,
+          correctAnswers: attempt.correctAnswers,
+          incorrectAnswers: attempt.incorrectAnswers,
+          unattemptedAnswers: attempt.unattemptedAnswers,
+          notAttemptedAnswers: attempt.notAttemptedAnswers,
+          rank: attempt.rank,
+          totalParticipants: attempt.totalParticipants,
+          subjectScores: attempt.subjectScores || [],
+        });
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Failed to load test result', 'error');
+    }
+  }, [addToast]);
+
   // Auto-submit handler
   const handleAutoSubmit = useCallback(async () => {
     if (submitted || submitting || !attemptId || !detail) return;
@@ -145,44 +223,8 @@ const TestAttemptScreen: React.FC = () => {
       const response = await api.attempts.submit(attemptId);
 
       if (response.success && response.data) {
-        setSubmitted({
-          score: response.data.score,
-          totalQuestions: response.data.totalQuestions,
-          totalMarks: response.data.totalMarks,
-          percentage: response.data.percentage,
-          correctAnswers: response.data.correctAnswers,
-          incorrectAnswers: response.data.incorrectAnswers,
-          unattemptedAnswers: response.data.unattemptedAnswers,
-          notAttemptedAnswers: response.data.notAttemptedAnswers,
-          rank: response.data.rank,
-          totalParticipants: response.data.totalParticipants,
-        });
         // Re-fetch attempt to get correct answers for review
-        const refreshed = await api.attempts.getById(attemptId);
-        if (refreshed.success && refreshed.data) {
-          const refreshedData = refreshed.data;
-        setDetail({
-          test: {
-            id: refreshedData.attempt.testId,
-            title: refreshedData.attempt.testTitle,
-            durationMinutes: refreshedData.attempt.durationMinutes || 60,
-          },
-          questions: refreshedData.questions.map((q: any) => ({
-              id: q.id,
-              text: q.text,
-              textHindi: q.textHindi || null,
-              options: q.options,
-              optionsHindi: q.optionsHindi && q.optionsHindi.length > 0 ? q.optionsHindi : null,
-              selectedAnswer: q.selectedAnswer,
-              correctAnswer: q.correctAnswer,
-              description: q.description || null,
-              descriptionHindi: q.descriptionHindi || null,
-              diagram: q.diagram || null,
-              fontSize: q.fontSize || 18,
-              isBold: q.isBold || false,
-            })),
-          });
-        }
+        await loadSubmittedResult(attemptId);
         addToast(t('timeUpAutoSubmitted'), 'info');
       }
     } catch (err: any) {
@@ -190,13 +232,9 @@ const TestAttemptScreen: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [submitted, submitting, attemptId, detail, addToast, t]);
+  }, [submitted, submitting, attemptId, detail, loadSubmittedResult, addToast, t]);
 
-  // Keep handleAutoSubmitRef in sync
-  useEffect(() => { handleAutoSubmitRef.current = handleAutoSubmit; }, [handleAutoSubmit]);
-
-  // App minimization warning and auto-submit system
-  // All actions (alerts, auto-submit) happen ONLY when user returns to foreground
+  // Pause timer when app is minimized/backgrounded, resume when foregrounded
   useEffect(() => {
     if (!testStarted) return;
 
@@ -205,35 +243,88 @@ const TestAttemptScreen: React.FC = () => {
       appStateRef.current = nextAppState;
 
       // Skip if test is not active
-      if (!testStartedRef.current || submittedRef.current || submittingRef.current) {
+      if (!testStartedRef.current || submittedRef.current || submittingRef.current || manualPausedRef.current) {
         return;
       }
 
-      // User LEFT the app (active -> background)
+      // User LEFT the app (active -> background): pause the timer
       if (previousState === 'active' && isBackgroundState(nextAppState)) {
-        warningsCountRef.current += 1;
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        // Tell the server to stop the test clock while the app is minimized
+        if (!pausedRef.current && attemptIdRef.current) {
+          pausedRef.current = true;
+          api.attempts.pause(attemptIdRef.current)
+            .then(() => {
+              // A late pause response can land after resume (network ordering),
+              // leaving the clock frozen server-side. If we're already back in
+              // the foreground, undo it and re-sync the remaining time.
+              if (!isBackgroundState(appStateRef.current)) {
+                api.attempts.resume(attemptIdRef.current)
+                  .then((res) => {
+                    if (
+                      res.success &&
+                      res.data &&
+                      !res.data.submitted &&
+                      typeof res.data.remainingSeconds === 'number'
+                    ) {
+                      setTimeRemaining(res.data.remainingSeconds);
+                    }
+                  })
+                  .catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
       }
 
-      // User RETURNED to the app (background/inactive -> active)
+      // User RETURNED to the app (background/inactive -> active): resume the timer
       if (isBackgroundState(previousState) && nextAppState === 'active') {
-        const count = warningsCountRef.current;
-
-        if (count >= 3) {
-          // 3rd warning: auto-submit
-          handleAutoSubmitRef.current();
-        } else if (count > 0) {
-          // 1st or 2nd warning: show a warning toast after the app has fully resumed.
-          if (alertTimeoutRef.current) {
-            clearTimeout(alertTimeoutRef.current);
+        if (!submittedRef.current && !submittingRef.current && testStartedRef.current) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
-          alertTimeoutRef.current = setTimeout(() => {
-            addToast(
-              t('appMinimizedWarningMessage', { count, max: 3 }),
-              'warning',
-              t('appMinimizedWarningTitle')
-            );
-            alertTimeoutRef.current = null;
-          }, 300);
+          (async () => {
+            try {
+              const res = await api.attempts.resume(attemptIdRef.current);
+              if (res.success && res.data) {
+                if (res.data.submitted) {
+                  // Server already submitted (remaining time had run out)
+                  submittedRef.current = true;
+                  await loadSubmittedResult(attemptIdRef.current);
+                  return;
+                }
+                if (typeof res.data.remainingSeconds === 'number') {
+                  setTimeRemaining(res.data.remainingSeconds);
+                }
+              }
+            } catch {
+              // Resume failed (offline) — continue from last known value
+            } finally {
+              pausedRef.current = false;
+              if (!submittedRef.current && !submittingRef.current && testStartedRef.current) {
+                if (intervalRef.current) {
+                  clearInterval(intervalRef.current);
+                  intervalRef.current = null;
+                }
+                intervalRef.current = setInterval(() => {
+                  setTimeRemaining((prev) => {
+                    if (prev <= 1) {
+                      if (intervalRef.current) {
+                        clearInterval(intervalRef.current);
+                        intervalRef.current = null;
+                      }
+                      return 0;
+                    }
+                    return prev - 1;
+                  });
+                }, 1000);
+              }
+            }
+          })();
         }
       }
     };
@@ -242,13 +333,9 @@ const TestAttemptScreen: React.FC = () => {
 
     return () => {
       subscription.remove();
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-        alertTimeoutRef.current = null;
-      }
     };
-  // Only depend on testStarted and t — refs handle everything else
-  }, [testStarted, t]);
+  // Only depend on testStarted + stable callbacks — refs handle everything else
+  }, [testStarted, loadSubmittedResult]);
 
   // Auto-submit when time reaches 0
   useEffect(() => {
@@ -265,20 +352,23 @@ const TestAttemptScreen: React.FC = () => {
     }
   }, [timeRemaining, submitted, submitting, detail, attemptId, testStarted, handleAutoSubmit]);
 
-  // Timer countdown
+  // Timer countdown — pauses when app goes to background or test is manually paused, resumes otherwise
   useEffect(() => {
-    if (detail && !submitted && timeRemaining > 0 && testStarted) {
+    if (detail && !submitted && testStarted && !paused && !isBackgroundState(appStateRef.current)) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       intervalRef.current = setInterval(() => {
         setTimeRemaining((prev) => {
-          const newTime = prev - 1;
-          if (newTime <= 0) {
+          if (prev <= 1) {
             if (intervalRef.current) {
               clearInterval(intervalRef.current);
               intervalRef.current = null;
             }
             return 0;
           }
-          return newTime;
+          return prev - 1;
         });
       }, 1000);
 
@@ -294,7 +384,7 @@ const TestAttemptScreen: React.FC = () => {
         intervalRef.current = null;
       }
     }
-  }, [detail, submitted, testStarted]);
+  }, [detail, submitted, testStarted, paused]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -357,6 +447,7 @@ const TestAttemptScreen: React.FC = () => {
             fontSize: q.fontSize || 18,
             isBold: q.isBold || false,
           })),
+          subjects: attemptData.subjects || undefined,
         });
 
         // Check if test has been started
@@ -373,15 +464,21 @@ const TestAttemptScreen: React.FC = () => {
           setShowInstructions(true);
         }
 
-        // Calculate remaining time
+        // Calculate remaining time (prefer server-synced value; fall back to local calc)
         if (hasStarted && !attemptData.attempt.submittedAt) {
           const durationSeconds = (attemptData.attempt.durationMinutes || 60) * 60;
-          const startedAt = new Date(attemptData.attempt.startedAt);
-          const now = new Date();
-          const elapsedSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
-          const remaining = Math.max(0, durationSeconds - elapsedSeconds);
+          let remaining;
+          if (typeof attemptData.attempt.remainingSeconds === 'number') {
+            remaining = attemptData.attempt.remainingSeconds;
+          } else {
+            const startedAt = new Date(attemptData.attempt.startedAt);
+            const now = new Date();
+            const elapsedSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+            remaining = Math.max(0, durationSeconds - elapsedSeconds);
+          }
           setTimeRemaining(remaining);
-          startTimeRef.current = startedAt;
+          startTimeRef.current = new Date(attemptData.attempt.startedAt);
+          durationSecondsRef.current = durationSeconds;
           timerInitializedRef.current = true;
         } else if (!attemptData.attempt.submittedAt) {
           const durationSeconds = (attemptData.attempt.durationMinutes || 60) * 60;
@@ -402,6 +499,7 @@ const TestAttemptScreen: React.FC = () => {
             notAttemptedAnswers: attemptData.attempt.notAttemptedAnswers,
             rank: attemptData.attempt.rank,
             totalParticipants: attemptData.attempt.totalParticipants,
+            subjectScores: attemptData.subjects || undefined,
           });
         }
       }
@@ -449,13 +547,13 @@ const TestAttemptScreen: React.FC = () => {
   }, [attemptId, submitted]);
 
   const navigateToQuestion = async (index: number) => {
-    if (index >= 0 && index < (detail?.questions.length || 0)) {
+    if (index >= 0 && index < (visibleQuestions?.length || 0)) {
       setCurrentQuestionIndex(index);
 
       // Save to backend
       if (attemptId && !submitted) {
         try {
-          await api.attempts.update(attemptId, { currentQuestionIndex: index });
+          await api.attempts.update(attemptId, { currentQuestionIndex: globalIndexFor(index) });
         } catch (err: any) {
           console.error('Failed to save current question index', err);
         }
@@ -464,13 +562,13 @@ const TestAttemptScreen: React.FC = () => {
   };
 
   const goToNext = async () => {
-    if (detail && currentQuestionIndex < detail.questions.length - 1) {
+    if (detail && currentQuestionIndex < visibleQuestions.length - 1) {
       const newIndex = currentQuestionIndex + 1;
       setCurrentQuestionIndex(newIndex);
 
       if (attemptId && !submitted) {
         try {
-          await api.attempts.update(attemptId, { currentQuestionIndex: newIndex });
+          await api.attempts.update(attemptId, { currentQuestionIndex: globalIndexFor(newIndex) });
         } catch (err: any) {
           console.error('Failed to save current question index', err);
         }
@@ -485,11 +583,41 @@ const TestAttemptScreen: React.FC = () => {
 
       if (attemptId && !submitted) {
         try {
-          await api.attempts.update(attemptId, { currentQuestionIndex: newIndex });
+          await api.attempts.update(attemptId, { currentQuestionIndex: globalIndexFor(newIndex) });
         } catch (err: any) {
           console.error('Failed to save current question index', err);
         }
       }
+    }
+  };
+
+  const saveAnswer = async () => {
+    if (!attemptId || !detail || submitted || submitting) return;
+    try {
+      await api.attempts.update(attemptId, {
+        answers,
+        currentQuestionIndex: globalIndexFor(currentQuestionIndex),
+      });
+      addToast(t('answerSaved'), 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to save answer', 'error');
+    }
+  };
+
+  const clearAnswer = async () => {
+    if (!currentQuestion || !attemptId || submitted) return;
+    if (!(currentQuestion.id in answers)) {
+      addToast(t('noAnswerToClear'), 'info');
+      return;
+    }
+    const newAnswers = { ...answers };
+    delete newAnswers[currentQuestion.id];
+    setAnswers(newAnswers);
+    try {
+      await api.attempts.update(attemptId, { answers: newAnswers });
+      addToast(t('answerCleared'), 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to clear answer', 'error');
     }
   };
 
@@ -502,44 +630,8 @@ const TestAttemptScreen: React.FC = () => {
       const response = await api.attempts.submit(attemptId);
 
       if (response.success && response.data) {
-        setSubmitted({
-          score: response.data.score,
-          totalQuestions: response.data.totalQuestions,
-          totalMarks: response.data.totalMarks,
-          percentage: response.data.percentage,
-          correctAnswers: response.data.correctAnswers,
-          incorrectAnswers: response.data.incorrectAnswers,
-          unattemptedAnswers: response.data.unattemptedAnswers,
-          notAttemptedAnswers: response.data.notAttemptedAnswers,
-          rank: response.data.rank,
-          totalParticipants: response.data.totalParticipants,
-        });
         // Re-fetch attempt to get correct answers for review
-        const refreshed = await api.attempts.getById(attemptId);
-        if (refreshed.success && refreshed.data) {
-          const refreshedData = refreshed.data;
-          setDetail({
-            test: {
-              id: refreshedData.attempt.testId,
-              title: refreshedData.attempt.testTitle,
-              durationMinutes: refreshedData.attempt.durationMinutes || 60,
-            },
-            questions: refreshedData.questions.map((q: any) => ({
-              id: q.id,
-              text: q.text,
-              textHindi: q.textHindi || null,
-              options: q.options,
-              optionsHindi: q.optionsHindi && q.optionsHindi.length > 0 ? q.optionsHindi : null,
-              selectedAnswer: q.selectedAnswer,
-              correctAnswer: q.correctAnswer,
-              description: q.description || null,
-              descriptionHindi: q.descriptionHindi || null,
-              diagram: q.diagram || null,
-              fontSize: q.fontSize || 18,
-              isBold: q.isBold || false,
-            })),
-          });
-        }
+        await loadSubmittedResult(attemptId);
         addToast(t('testSubmittedSuccess'), 'success');
       }
     } catch (err: any) {
@@ -562,7 +654,7 @@ const TestAttemptScreen: React.FC = () => {
         const durationSeconds = (detail?.test.durationMinutes || 60) * 60;
         setTimeRemaining(durationSeconds);
         startTimeRef.current = new Date();
-        warningsCountRef.current = 0;
+        durationSecondsRef.current = durationSeconds;
         timerInitializedRef.current = true;
         addToast(t('testStartedTimer'), 'success');
       }
@@ -570,6 +662,51 @@ const TestAttemptScreen: React.FC = () => {
       addToast(err.message || 'Failed to start test', 'error');
     } finally {
       setStarting(false);
+    }
+  };
+
+  const pauseTest = async () => {
+    if (!attemptId || !testStarted || submitted || paused || resuming) return;
+
+    try {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      const response = await api.attempts.pause(attemptId);
+      if (response.success && response.data?.submitted) {
+        await loadSubmittedResult(attemptId);
+        return;
+      }
+      setPaused(true);
+      addToast(t('testPaused'), 'info');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to pause test', 'error');
+    }
+  };
+
+  const resumeTest = async () => {
+    if (!attemptId || !testStarted || submitted || resuming) return;
+
+    try {
+      setResuming(true);
+      const response = await api.attempts.resume(attemptId);
+
+      if (response.success && response.data) {
+        if (response.data.submitted) {
+          await loadSubmittedResult(attemptId);
+          return;
+        }
+        if (typeof response.data.remainingSeconds === 'number') {
+          setTimeRemaining(response.data.remainingSeconds);
+        }
+      }
+      setPaused(false);
+      addToast(t('testResumed'), 'success');
+    } catch (err: any) {
+      addToast(err.message || 'Failed to resume test', 'error');
+    } finally {
+      setResuming(false);
     }
   };
 
@@ -584,15 +721,31 @@ const TestAttemptScreen: React.FC = () => {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getQuestionStatus = (index: number): QuestionStatus => {
-    const question = detail?.questions[index];
-    if (!question) return { answered: false, marked: false, visited: false };
-
+  const getQuestionStatus = (question: Question): QuestionStatus => {
     return {
       answered: question.id in answers,
       marked: markedQuestions.has(question.id),
-      visited: index === currentQuestionIndex || question.id in answers || markedQuestions.has(question.id),
+      visited: question.id === currentQuestion?.id || question.id in answers || markedQuestions.has(question.id),
     };
+  };
+
+  const getReviewStatus = (question: Question): 'correct' | 'wrong' | 'skipped' => {
+    const userAnswer = question.selectedAnswer;
+    const correctAnswer = question.correctAnswer;
+    const notAttemptedTexts = ['Not Attempted', 'प्रयास नहीं किया गया'];
+    const isNotAttempted =
+      userAnswer === -1 ||
+      (userAnswer !== null &&
+        userAnswer !== undefined &&
+        (notAttemptedTexts.includes(question.options[userAnswer]) ||
+          (question.optionsHindi ? notAttemptedTexts.includes(question.optionsHindi[userAnswer]) : false)));
+    if (isNotAttempted || userAnswer === null || userAnswer === undefined) {
+      return 'skipped';
+    }
+    if (userAnswer === correctAnswer) {
+      return 'correct';
+    }
+    return 'wrong';
   };
 
   const getQuestionStats = () => {
@@ -603,8 +756,8 @@ const TestAttemptScreen: React.FC = () => {
     let marked = 0;
     let notVisited = 0;
 
-    detail.questions.forEach((q, idx) => {
-      const status = getQuestionStatus(idx);
+    detail.questions.forEach((q) => {
+      const status = getQuestionStatus(q);
       if (status.answered) answered++;
       else unanswered++;
       if (status.marked) marked++;
@@ -733,8 +886,56 @@ const TestAttemptScreen: React.FC = () => {
     );
   }
 
-  const currentQuestion = detail.questions[currentQuestionIndex];
+  const subjectList = detail.subjects && detail.subjects.length > 0 ? detail.subjects : [];
+  const subjectByQuestionId = (() => {
+    const map: Record<string, string> = {};
+    subjectList.forEach((s) => {
+      (s.questionIds || []).forEach((qid) => {
+        map[qid] = s.name;
+      });
+    });
+    return map;
+  })();
+  const getQuestionSubject = (question: Question): string => subjectByQuestionId[question.id] || 'General';
+
+  const visibleQuestions = activeSubject === '__all__'
+    ? detail.questions
+    : detail.questions.filter((q) => getQuestionSubject(q) === activeSubject);
+
+  // Convert an index in the visible (filtered) list to the global question index
+  const globalIndexFor = (visibleIdx: number): number => {
+    const q = visibleQuestions[visibleIdx];
+    if (!q) return visibleIdx;
+    const gi = detail.questions.findIndex((x) => x.id === q.id);
+    return gi >= 0 ? gi : visibleIdx;
+  };
+
+  const switchSubject = (subject: string) => {
+    const currentGlobalId = currentQuestion?.id;
+    setActiveSubject(subject);
+    setVisibleReviewCount(10);
+    if (subject === '__all__') {
+      const pos = currentGlobalId ? detail.questions.findIndex((q) => q.id === currentGlobalId) : 0;
+      setCurrentQuestionIndex(pos >= 0 ? pos : 0);
+    } else {
+      const newList = detail.questions.filter((q) => getQuestionSubject(q) === subject);
+      const pos = currentGlobalId ? newList.findIndex((q) => q.id === currentGlobalId) : 0;
+      setCurrentQuestionIndex(pos >= 0 ? pos : 0);
+    }
+  };
+
+  const currentQuestion = visibleQuestions[currentQuestionIndex];
   const stats = getQuestionStats();
+
+  const filteredReviewQuestions = visibleQuestions.filter((q) =>
+    reviewFilter === 'all' ? true : getReviewStatus(q) === reviewFilter
+  );
+  const reviewCounts = {
+    all: visibleQuestions.length,
+    correct: visibleQuestions.filter((q) => getReviewStatus(q) === 'correct').length,
+    wrong: visibleQuestions.filter((q) => getReviewStatus(q) === 'wrong').length,
+    skipped: visibleQuestions.filter((q) => getReviewStatus(q) === 'skipped').length,
+  };
 
   return (
     <View style={styles.container}>
@@ -759,7 +960,7 @@ const TestAttemptScreen: React.FC = () => {
             {detail.test.title}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {t('questionOf', { current: currentQuestionIndex + 1, total: detail.questions.length })}
+            {t('questionOf', { current: currentQuestionIndex + 1, total: visibleQuestions.length })}
           </Text>
         </View>
         <View style={styles.headerRight}>
@@ -780,6 +981,17 @@ const TestAttemptScreen: React.FC = () => {
           >
             <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
           </View>
+          {testStarted && !submitted && (
+            <TouchableOpacity
+              style={[styles.pauseButton, paused && styles.pauseButtonActive]}
+              onPress={pauseTest}
+              disabled={submitting}
+            >
+              <Text style={[styles.pauseButtonText, paused && styles.pauseButtonTextActive]}>
+                {t('pause')}
+              </Text>
+            </TouchableOpacity>
+          )}
           {!submitted && (
             <TouchableOpacity
               style={styles.submitButton}
@@ -792,7 +1004,42 @@ const TestAttemptScreen: React.FC = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Subject Tabs */}
+        {subjectList.length > 1 && (
+          <View style={styles.subjectTabsWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.subjectTabsRow}
+            >
+              <TouchableOpacity
+                style={[styles.subjectTab, activeSubject === '__all__' && styles.subjectTabActive]}
+                onPress={() => switchSubject('__all__')}
+              >
+                <Text style={[styles.subjectTabText, activeSubject === '__all__' && styles.subjectTabTextActive]}>
+                  All ({detail.questions.length})
+                </Text>
+              </TouchableOpacity>
+              {subjectList.map((s) => (
+                <TouchableOpacity
+                  key={s.name}
+                  style={[styles.subjectTab, activeSubject === s.name && styles.subjectTabActive]}
+                  onPress={() => switchSubject(s.name)}
+                >
+                  <Text style={[styles.subjectTabText, activeSubject === s.name && styles.subjectTabTextActive]}>
+                    {s.name} ({s.totalQuestions})
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {submitted ? (
           <View>
             {/* Results Summary */}
@@ -869,12 +1116,54 @@ const TestAttemptScreen: React.FC = () => {
               </View>
             </View>
 
+            {/* Subject-wise Performance */}
+            {submitted.subjectScores && submitted.subjectScores.length > 0 && (
+              <View style={styles.subjectResultsCard}>
+                <View style={styles.subjectResultsHeader}>
+                  <Text style={styles.subjectResultsTitle}>{t('subjectWisePerformance')}</Text>
+                  <Text style={styles.subjectResultsCount}>{t('subjectsColon')} {submitted.subjectScores.length}</Text>
+                </View>
+                {submitted.subjectScores.map((s) => (
+                  <View key={s.name} style={styles.subjectResultRow}>
+                    <Text style={styles.subjectResultName} numberOfLines={1}>{s.name}</Text>
+                    <Text style={styles.subjectResultScore}>{Number(s.score ?? 0).toFixed(2)}/{s.totalMarks}</Text>
+                    <View style={styles.subjectResultBreakdown}>
+                      <Text style={[styles.subjectResultStat, styles.subjectResultStatCorrect]}>{t('correct')}: {s.correctAnswers ?? 0}</Text>
+                      <Text style={[styles.subjectResultStat, styles.subjectResultStatWrong]}>{t('incorrect')}: {s.incorrectAnswers ?? 0}</Text>
+                      <Text style={[styles.subjectResultStat, styles.subjectResultStatSkipped]}>{t('skipped')}: {s.unattemptedAnswers ?? 0}</Text>
+                      <Text style={[styles.subjectResultStat, styles.subjectResultStatUnanswered]}>{t('notAttempted')}: {s.notAttemptedAnswers ?? 0}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* Question Review */}
             <View style={styles.reviewSection}>
-              {detail.questions.map((question, index) => {
+              {/* Review Filter */}
+              <View style={styles.reviewFilterRow}>
+                <Text style={styles.reviewFilterLabel}>{t('filterColon')}</Text>
+                {(['all', 'correct', 'wrong', 'skipped'] as const).map((f) => (
+                  <TouchableOpacity
+                    key={f}
+                    style={[styles.reviewFilterChip, reviewFilter === f && styles.reviewFilterChipActive]}
+                    onPress={() => {
+                      setReviewFilter(f);
+                      setVisibleReviewCount(10);
+                    }}
+                  >
+                    <Text style={[styles.reviewFilterChipText, reviewFilter === f && styles.reviewFilterChipTextActive]}>
+                      {f === 'all' ? t('all') : f === 'correct' ? t('correct') : f === 'wrong' ? t('incorrect') : t('skipped')} ({reviewCounts[f]})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {filteredReviewQuestions.slice(0, visibleReviewCount).map((question, index) => {
                 const userAnswer = question.selectedAnswer;
                 const correctAnswer = question.correctAnswer;
-                const isNotAttempted = userAnswer === -1;
+                const reviewOptions = selectedLanguage === 'hi' && question.optionsHindi ? question.optionsHindi : question.options;
+                const isNotAttempted = userAnswer === -1 || (userAnswer !== null && userAnswer !== undefined && ['Not Attempted', 'प्रयास नहीं किया गया'].includes(reviewOptions[userAnswer]));
                 const isCorrect = !isNotAttempted && userAnswer === correctAnswer;
                 const isAnswered = !isNotAttempted && userAnswer !== null && userAnswer !== undefined;
                 return (
@@ -957,6 +1246,16 @@ const TestAttemptScreen: React.FC = () => {
                   </View>
                 );
               })}
+              {visibleReviewCount < filteredReviewQuestions.length && (
+                <TouchableOpacity
+                  style={styles.loadMoreButton}
+                  onPress={() => setVisibleReviewCount(prev => prev + 20)}
+                >
+                  <Text style={styles.loadMoreButtonText}>
+                    {t('loadMore', { defaultValue: 'Load More Questions' })} ({filteredReviewQuestions.length - visibleReviewCount} {t('remaining', { defaultValue: 'remaining' })})
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ) : (
@@ -1044,64 +1343,16 @@ const TestAttemptScreen: React.FC = () => {
                 </TouchableOpacity>
               ))}
               
-              {/* Not Attempted - Option E */}
-              <TouchableOpacity
-                style={[
-                  styles.option,
-                  answers[currentQuestion.id] === -1 && styles.optionNotAttempted,
-                ]}
-                onPress={() => onChange(currentQuestion.id, -1)}
-              >
-                <View
-                  style={[
-                    styles.optionRadio,
-                    answers[currentQuestion.id] === -1 && styles.optionRadioNotAttempted,
-                  ]}
-                >
-                  {answers[currentQuestion.id] === -1 && <View style={[styles.optionRadioInner, styles.optionRadioInnerNotAttempted]} />}
-                </View>
-                <Text style={[styles.optionText, answers[currentQuestion.id] === -1 && styles.optionTextNotAttempted]}>
-                  {t('notAttempted')}
-                </Text>
-              </TouchableOpacity>
+
             </View>
 
-            {/* Navigation Buttons */}
+            {/* Answer Stats */}
             <View style={styles.navigationButtons}>
-              <TouchableOpacity
-                style={[styles.navButton, styles.navButtonPrev]}
-                onPress={goToPrevious}
-                disabled={currentQuestionIndex === 0}
-              >
-                  <Text
-                    style={[
-                      styles.navButtonText,
-                      styles.navButtonTextPrev,
-                      currentQuestionIndex === 0 && styles.navButtonTextDisabled,
-                    ]}
-                  >
-                    {t('previous')}
-                  </Text>
-              </TouchableOpacity>
-
               <View style={styles.statsContainer}>
                 <Text style={styles.statsText}>
                   {t('answeredStats', { answered: stats.answered, unanswered: stats.unanswered, marked: stats.marked })}
                 </Text>
               </View>
-
-              {currentQuestionIndex < detail.questions.length - 1 ? (
-                <TouchableOpacity style={styles.navButton} onPress={goToNext}>
-                  <Text style={styles.navButtonText}>{t('next')}</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.navButton, styles.navButtonSubmit]}
-                  onPress={() => setShowSubmitModal(true)}
-                >
-                  <Text style={styles.navButtonText}>{t('reviewAndSubmit')}</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         )}
@@ -1139,9 +1390,9 @@ const TestAttemptScreen: React.FC = () => {
 
             {/* Question Grid */}
             <View style={styles.paletteGrid}>
-              {detail.questions.map((q, idx) => {
-                const status = getQuestionStatus(idx);
-                const isCurrent = idx === currentQuestionIndex;
+              {visibleQuestions.map((q, idx) => {
+                const status = getQuestionStatus(q);
+                const isCurrent = q.id === currentQuestion.id;
                 const isAnswered = status.answered;
                 const isMarked = status.marked;
 
@@ -1173,6 +1424,42 @@ const TestAttemptScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Fixed Footer Navigation Bar */}
+      {testStarted && !submitted && (
+        <View style={styles.footerNavRow}>
+          <TouchableOpacity
+            style={[styles.footerNavButton, styles.footerNavButtonPrev, currentQuestionIndex === 0 && styles.footerNavButtonDisabled]}
+            onPress={goToPrevious}
+            disabled={currentQuestionIndex === 0}
+          >
+            <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrev, currentQuestionIndex === 0 && styles.footerNavButtonTextDisabled]}>
+              {t('previous')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.footerNavButton, styles.footerNavButtonClear, !(currentQuestion.id in answers) && styles.footerNavButtonDisabled]}
+            onPress={clearAnswer}
+            disabled={!(currentQuestion.id in answers)}
+          >
+            <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextClear, !(currentQuestion.id in answers) && styles.footerNavButtonTextDisabled]}>
+              {t('clear')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSave]} onPress={saveAnswer}>
+            <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('save')}</Text>
+          </TouchableOpacity>
+          {currentQuestionIndex < visibleQuestions.length - 1 ? (
+            <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonNext]} onPress={goToNext}>
+              <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('next')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSubmit]} onPress={() => setShowSubmitModal(true)}>
+              <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('submit')}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {/* Submit Confirmation Modal */}
       <Modal
@@ -1232,6 +1519,36 @@ const TestAttemptScreen: React.FC = () => {
       </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pause Overlay */}
+      <Modal
+        visible={paused}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.pauseOverlay}>
+          <View style={styles.pauseCard}>
+            <Icons.Pause size={56} color={colors.primary} />
+            <Text style={styles.pauseTitle}>{t('testPaused')}</Text>
+            <Text style={styles.pauseMessage}>{t('pausedMessage')}</Text>
+            <TouchableOpacity
+              style={[styles.pauseResumeButton, resuming && styles.pauseResumeButtonDisabled]}
+              onPress={resumeTest}
+              disabled={resuming}
+            >
+              {resuming ? (
+                <View style={styles.buttonLoadingContainer}>
+                  <ActivityIndicator size="small" color={colors.white} style={styles.buttonSpinner} />
+                  <Text style={styles.pauseResumeButtonText}>{t('resuming', { defaultValue: 'Resuming...' })}</Text>
+                </View>
+              ) : (
+                <Text style={styles.pauseResumeButtonText}>{t('resume')}</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1315,6 +1632,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  headerNavRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+  headerNavButton: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 8,
+    backgroundColor: colors.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerNavButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  headerNavButtonSubmit: {
+    backgroundColor: colors.success,
+  },
+  headerNavButtonDisabled: {
+    opacity: 0.4,
+  },
+  headerNavButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.gray700,
+  },
+  headerNavButtonTextPrimary: {
+    color: colors.white,
+  },
+  headerNavButtonTextDisabled: {
+    color: colors.gray400,
+  },
   timer: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1344,12 +1698,166 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  pauseButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
+  },
+  pauseButtonActive: {
+    backgroundColor: colors.primary,
+  },
+  pauseButtonText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pauseButtonTextActive: {
+    color: colors.white,
+  },
+  pauseOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pauseCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 340,
+  },
+  pauseTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.gray900,
+    marginTop: 12,
+  },
+  pauseMessage: {
+    fontSize: 14,
+    color: colors.gray600,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  pauseResumeButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 180,
+  },
+  pauseResumeButtonDisabled: {
+    opacity: 0.6,
+  },
+  pauseResumeButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
+  },
+  subjectTabsWrap: {
+    marginBottom: 12,
+  },
+  subjectTabsRow: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  subjectTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  subjectTabActive: {
+    backgroundColor: '#1d4ed8',
+    borderColor: '#1d4ed8',
+  },
+  subjectTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.gray700,
+  },
+  subjectTabTextActive: {
+    color: colors.white,
+  },
+  subjectResultsCard: {
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  subjectResultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  subjectResultsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.gray900,
+  },
+  subjectResultsCount: {
+    fontSize: 11,
+    color: colors.gray500,
+  },
+  subjectResultRow: {
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray100,
+  },
+  subjectResultName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.gray900,
+    marginBottom: 2,
+  },
+  subjectResultScore: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 6,
+  },
+  subjectResultBreakdown: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  subjectResultStat: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  subjectResultStatCorrect: {
+    color: '#16a34a',
+  },
+  subjectResultStatWrong: {
+    color: '#dc2626',
+  },
+  subjectResultStatSkipped: {
+    color: '#d97706',
+  },
+  subjectResultStatUnanswered: {
+    color: '#ea580c',
   },
   questionContainer: {
     backgroundColor: colors.white,
@@ -1405,6 +1913,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+    marginRight: 8,
+  },
+  clearButtonDisabled: {
+    backgroundColor: colors.gray100,
+  },
+  clearButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.danger,
+  },
+  clearButtonTextDisabled: {
+    color: colors.gray400,
   },
   markButton: {
     paddingHorizontal: 12,
@@ -1529,6 +2055,58 @@ const styles = StyleSheet.create({
   statsText: {
     fontSize: 12,
     color: colors.gray600,
+  },
+  footerNavRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray200,
+  },
+  footerNavButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerNavButtonPrev: {
+    backgroundColor: colors.gray100,
+  },
+  footerNavButtonClear: {
+    backgroundColor: '#fee2e2',
+  },
+  footerNavButtonSave: {
+    backgroundColor: '#1d4ed8',
+  },
+  footerNavButtonNext: {
+    backgroundColor: colors.primary,
+  },
+  footerNavButtonSubmit: {
+    backgroundColor: colors.success,
+  },
+  footerNavButtonDisabled: {
+    opacity: 0.4,
+  },
+  footerNavButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  footerNavButtonTextPrev: {
+    color: colors.gray900,
+  },
+  footerNavButtonTextClear: {
+    color: colors.danger,
+  },
+  footerNavButtonTextPrimary: {
+    color: colors.white,
+  },
+  footerNavButtonTextDisabled: {
+    color: colors.gray400,
   },
   paletteContainer: {
     backgroundColor: colors.white,
@@ -2038,6 +2616,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
+  reviewFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  reviewFilterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.gray600,
+    marginRight: 2,
+  },
+  reviewFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+  },
+  reviewFilterChipActive: {
+    backgroundColor: '#1d4ed8',
+    borderColor: '#1d4ed8',
+  },
+  reviewFilterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.gray700,
+  },
+  reviewFilterChipTextActive: {
+    color: colors.white,
+  },
   reviewCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -2215,6 +2826,22 @@ const styles = StyleSheet.create({
     color: '#78350f',
     lineHeight: 22,
     textAlign: 'justify',
+  },
+  loadMoreButton: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 24,
+  },
+  loadMoreButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1d4ed8',
   },
 });
 

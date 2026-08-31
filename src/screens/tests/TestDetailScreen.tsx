@@ -56,12 +56,19 @@ const formatMarkingValue = (value: number | string | undefined) => {
     : `${sign}${absValue.toFixed(2).replace(/\.?0+$/, '')}`;
 };
 
+const formatTestDateTime = (value?: string | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const datePart = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const timePart = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart} at ${timePart}`;
+};
+
 type TestDetailRouteProp = RouteProp<AppNavigationParamList, 'TestDetail'>;
 type NavigationProp = NativeStackNavigationProp<AppNavigationParamList>;
 
-type Question = { id: string; text: string; options: string[] };
-
 type Highlight = { icon?: string; title: string; description: string };
+type SubjectInfo = { name: string; questionCount: number };
 
 type PackageSummary = {
   id: string;
@@ -86,11 +93,13 @@ type TestDetail = {
     isPurchased?: boolean;
     isDemo?: boolean;
     isSubmitted?: boolean;
+    startDate?: string | null;
+    endDate?: string | null;
     highlights: Highlight[];
     instructions: string[];
     packages: PackageSummary[];
+    subjects: SubjectInfo[];
   };
-  questions: Question[];
 };
 
 const TestDetailScreen: React.FC = () => {
@@ -106,6 +115,12 @@ const TestDetailScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [existingAttempt, setExistingAttempt] = useState<any>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -113,14 +128,11 @@ const TestDetailScreen: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const [testResponse, attemptsResponse] = await Promise.allSettled([
-          api.tests.getById(testId),
-          api.attempts.getUserAttempts(),
-        ]);
+        const testResponse = await api.tests.getById(testId);
         if (!mounted) return;
 
-        if (testResponse.status === 'fulfilled' && testResponse.value.success && testResponse.value.data) {
-          const testData = testResponse.value.data as any;
+        if (testResponse.success && testResponse.data) {
+          const testData = testResponse.data as any;
           setData({
             test: {
               id: testData.test.id,
@@ -136,28 +148,25 @@ const TestDetailScreen: React.FC = () => {
               isPurchased: testData.test.isPurchased,
               isDemo: testData.test.isDemo,
               isSubmitted: testData.test.isSubmitted,
+              startDate: testData.test.startDate || null,
+              endDate: testData.test.endDate || null,
               highlights: testData.test.highlights || [],
               instructions: testData.test.instructions || [],
               packages: testData.test.packages || [],
+              subjects: testData.test.subjects || [],
             },
-            questions: (testData.questions || []).map((q: any, index: number) => ({
-              id: q.id || String(index),
-              text: q.text,
-              options: q.options,
-            })),
           });
 
-          if (attemptsResponse.status === 'fulfilled' && attemptsResponse.value.success && attemptsResponse.value.data) {
-            const userAttempts = attemptsResponse.value.data as any[];
-            const testAttempts = userAttempts.filter((a: any) => a.testId === testId);
-            testAttempts.sort(
-              (a: any, b: any) =>
-                new Date(b.createdAt || b.startedAt || 0).getTime() -
-                new Date(a.createdAt || a.startedAt || 0).getTime()
-            );
-            if (testAttempts.length > 0) {
-              setExistingAttempt(testAttempts[0]);
-            }
+          const testIdVal = testData.test.id;
+          const isInProgress = testData.test.isInProgress;
+          const inProgressAttemptId = testData.test.inProgressAttemptId;
+          const isSubmitted = testData.test.isSubmitted;
+          const lastSubmittedAttemptId = testData.test.lastSubmittedAttemptId;
+
+          if (isInProgress && inProgressAttemptId) {
+            setExistingAttempt({ attemptId: inProgressAttemptId, startedAt: new Date().toISOString(), submittedAt: null, testId: testIdVal });
+          } else if (isSubmitted && lastSubmittedAttemptId) {
+            setExistingAttempt({ attemptId: lastSubmittedAttemptId, submittedAt: new Date().toISOString(), testId: testIdVal });
           }
         } else {
           setError('Test not found');
@@ -303,6 +312,18 @@ const TestDetailScreen: React.FC = () => {
 
   const { test } = data;
 
+  const startTimestamp = test.startDate ? new Date(test.startDate).getTime() : null;
+  const isUpcoming = !!startTimestamp && now < startTimestamp;
+  const remainingMs = startTimestamp ? Math.max(0, startTimestamp - now) : 0;
+  const countdown = isUpcoming
+    ? {
+        days: Math.floor(remainingMs / 86400000),
+        hours: Math.floor((remainingMs % 86400000) / 3600000),
+        minutes: Math.floor((remainingMs % 3600000) / 60000),
+        seconds: Math.floor((remainingMs % 60000) / 1000),
+      }
+    : null;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {/* Header card */}
@@ -348,6 +369,42 @@ const TestDetailScreen: React.FC = () => {
           </View>
         </View>
 
+        {(test.startDate || test.endDate) && (
+          <View style={styles.dateRangeContainer}>
+            {countdown && (
+              <View style={styles.countdownCard}>
+                <Text style={styles.countdownTitle}>Test Starts In</Text>
+                <View style={styles.countdownRow}>
+                  {[
+                    { label: 'Days', value: countdown.days },
+                    { label: 'Hours', value: countdown.hours },
+                    { label: 'Mins', value: countdown.minutes },
+                    { label: 'Secs', value: countdown.seconds },
+                  ].map((unit) => (
+                    <View key={unit.label} style={styles.countdownBox}>
+                      <Text style={styles.countdownValue}>{String(unit.value).padStart(2, '0')}</Text>
+                      <Text style={styles.countdownLabel}>{unit.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.countdownStart}>{formatTestDateTime(test.startDate)}</Text>
+              </View>
+            )}
+            {test.startDate && (
+              <View style={[styles.dateBadge, isUpcoming && styles.dateBadgeUpcoming]}>
+                <Text style={[styles.dateBadgeLabel, isUpcoming && styles.dateBadgeLabelUpcoming]}>Test Starts</Text>
+                <Text style={[styles.dateBadgeValue, isUpcoming && styles.dateBadgeValueUpcoming]}>{formatTestDateTime(test.startDate)}</Text>
+              </View>
+            )}
+            {test.endDate && (
+              <View style={styles.dateBadge}>
+                <Text style={styles.dateBadgeLabel}>Test Ends</Text>
+                <Text style={styles.dateBadgeValue}>{formatTestDateTime(test.endDate)}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Available in Package badge */}
         {test.price === 0 && !test.isDemo ? (
           <View style={styles.packageBadgeRow}>
@@ -357,6 +414,21 @@ const TestDetailScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
+
+      {/* Subjects */}
+      {test.subjects.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Subjects in this Test</Text>
+          <View style={styles.subjectRow}>
+            {test.subjects.map((subject, index) => (
+              <View key={`${subject.name}-${index}`} style={styles.subjectChip}>
+                <Text style={styles.subjectChipName}>{subject.name}</Text>
+                <Text style={styles.subjectChipCount}>{subject.questionCount} Q</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Highlights */}
       {test.highlights.length > 0 && (
@@ -401,6 +473,12 @@ const TestDetailScreen: React.FC = () => {
       )}
 
       {/* Action card */}
+      {(() => {
+        const now = new Date();
+        const isBeforeStart = test.startDate && now < new Date(test.startDate);
+        const isAfterEnd = test.endDate && now > new Date(test.endDate);
+        const isDateRestricted = isBeforeStart || isAfterEnd;
+        return (
       <View style={styles.card}>
         {test.price === 0 && !test.isDemo && test.packages.length > 0 ? (
           <>
@@ -427,6 +505,12 @@ const TestDetailScreen: React.FC = () => {
               </View>
             ))}
             {test.isPurchased ? (
+              <>
+              {isDateRestricted ? (
+                <View style={[styles.startButton, styles.disabledButton]}>
+                  <Text style={styles.startButtonText}>{isBeforeStart ? 'Test Not Started Yet' : 'Test Date Passed'}</Text>
+                </View>
+              ) : (
               <TouchableOpacity
                 style={[styles.startButton, starting ? styles.disabledButton : null]}
                 onPress={handleStartAttempt}
@@ -441,6 +525,8 @@ const TestDetailScreen: React.FC = () => {
                   </Text>
                 )}
               </TouchableOpacity>
+              )}
+              </>
             ) : (
               <Text style={styles.purchaseHint}>
                 Purchase the package to access this test
@@ -450,6 +536,11 @@ const TestDetailScreen: React.FC = () => {
         ) : test.isDemo ? (
           <>
             <Text style={styles.priceText}>Free Demo</Text>
+            {isDateRestricted ? (
+              <View style={[styles.startButton, styles.disabledButton]}>
+                <Text style={styles.startButtonText}>{isBeforeStart ? 'Test Not Started Yet' : 'Test Date Passed'}</Text>
+              </View>
+            ) : (
             <TouchableOpacity
               style={[styles.startButton, starting ? styles.disabledButton : null]}
               onPress={handleStartAttempt}
@@ -470,6 +561,7 @@ const TestDetailScreen: React.FC = () => {
                 </Text>
               )}
             </TouchableOpacity>
+            )}
           </>
         ) : (
           <>
@@ -484,6 +576,11 @@ const TestDetailScreen: React.FC = () => {
                 <Text style={styles.primaryButtonText}>Add to Cart</Text>
               </TouchableOpacity>
             ) : null}
+            {isDateRestricted ? (
+              <View style={[styles.startButton, styles.disabledButton]}>
+                <Text style={styles.startButtonText}>{isBeforeStart ? 'Test Not Started Yet' : 'Test Date Passed'}</Text>
+              </View>
+            ) : (
             <TouchableOpacity
               style={[
                 styles.startButton,
@@ -507,9 +604,12 @@ const TestDetailScreen: React.FC = () => {
                 </Text>
               )}
             </TouchableOpacity>
+            )}
           </>
         )}
       </View>
+        );
+      })()}
     </ScrollView>
   );
 };
@@ -606,6 +706,93 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
+  dateRangeContainer: {
+    flexDirection: 'column',
+    gap: 8,
+    marginTop: 10,
+  },
+  countdownCard: {
+    alignItems: 'center',
+    backgroundColor: colors.primary + '0d',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    padding: 14,
+  },
+  countdownTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  countdownRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  countdownBox: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.primary + '33',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minWidth: 56,
+  },
+  countdownValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.primary,
+    fontVariant: ['tabular-nums'],
+  },
+  countdownLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.gray500,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  countdownStart: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    marginTop: 10,
+  },
+  dateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.gray50,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  dateBadgeUpcoming: {
+    backgroundColor: colors.primary + '14',
+    borderColor: colors.primary,
+  },
+  dateBadgeLabel: {
+    fontSize: 10,
+    color: colors.gray500,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  dateBadgeLabelUpcoming: {
+    color: colors.primary,
+  },
+  dateBadgeValue: {
+    fontSize: 12,
+    color: colors.gray800,
+    fontWeight: '600',
+  },
+  dateBadgeValueUpcoming: {
+    color: colors.primary,
+  },
   typePill: {
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -658,6 +845,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.gray900,
     marginBottom: 10,
+  },
+  subjectRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  subjectChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  subjectChipName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
+  subjectChipCount: {
+    fontSize: 11,
+    color: colors.gray500,
   },
   highlightItem: {
     flexDirection: 'row',

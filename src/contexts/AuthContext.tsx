@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api, setToken as apiSetToken, removeToken as apiRemoveToken } from '@api/api';
 import { configureGoogleSignIn, signInWithGoogle, signOutFromGoogle } from '@utils/googleSignIn';
+import { registerDeviceToken, unregisterDeviceToken } from '@services/notificationService';
 
 type User = {
   id: string;
@@ -55,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res.success && res.data?.token && res.data.user) {
       await apiSetToken(res.data.token);
       setUser(mapUser(res.data.user));
+      registerDeviceToken();
     } else {
       throw new Error(res.message || 'Login failed');
     }
@@ -65,12 +67,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (res.success && res.data?.token && res.data.user) {
       await apiSetToken(res.data.token);
       setUser(mapUser(res.data.user));
+      registerDeviceToken();
     } else {
       throw new Error(res.message || 'Registration failed');
     }
   };
 
   const logout = async () => {
+    await unregisterDeviceToken();
     await signOutFromGoogle();
     await apiRemoveToken();
     setUser(null);
@@ -94,6 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (res.success && res.data?.token && res.data.user) {
         await apiSetToken(res.data.token);
         setUser(mapUser(res.data.user));
+        registerDeviceToken();
       } else {
         await signOutFromGoogle();
         throw new Error(res.message || 'Google Sign-In failed');

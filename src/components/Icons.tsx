@@ -85,5 +85,6 @@ export const Icons = {
   Logout: (props: { size?: number; color?: string }) => <Icon name="logout" {...props} library="material" />,
   School: (props: { size?: number; color?: string }) => <Icon name="school" {...props} library="material" />,
   ShowChart: (props: { size?: number; color?: string }) => <Icon name="show-chart" {...props} library="material" />,
+  Pause: (props: { size?: number; color?: string }) => <Icon name="pause" {...props} library="material" />,
 };
 
