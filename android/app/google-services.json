@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "149424371793",
+    "project_id": "civilsadda-52d6d",
+    "storage_bucket": "civilsadda-52d6d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:149424371793:android:aa56d892905bc8522c6070",
+        "android_client_info": {
+          "package_name": "com.civilsaddaapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbiJMYrS4F3IjTuH8E9QNnm3P-Fk4EuNc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -5,9 +5,8 @@ export const configureGoogleSignIn = () => {
   console.log('[googleSignIn] Configuring with webClientId:', GOOGLE_WEB_CLIENT_ID);
   GoogleSignin.configure({
     webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     offlineAccess: false,
-  });
+  } as any);
 };
 
 export const signInWithGoogle = async (): Promise<{

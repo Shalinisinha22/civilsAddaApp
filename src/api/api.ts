@@ -110,7 +110,11 @@ export const api = {
       return apiRequest<Array<any>>(`/tests${query ? `?${query}` : ''}`);
     },
     getById: (id: string) =>
-      apiRequest<{ test: any; questions: any[] }>(`/tests/${id}`),
+      apiRequest<{
+        test: any;
+        questions: any[];
+        subjects?: Array<{ name: string; questionCount: number }>;
+      }>(`/tests/${id}`),
     getDemoTests: () => apiRequest<Array<any>>('/tests/demo'),
   },
   packages: {
@@ -169,6 +173,17 @@ export const api = {
         test?: {
           instructions?: string[];
         };
+        subjects?: Array<{
+          name: string;
+          questionIds: string[];
+          totalQuestions: number;
+          totalMarks: number;
+          correctAnswers?: number;
+          incorrectAnswers?: number;
+          unattemptedAnswers?: number;
+          notAttemptedAnswers?: number;
+          score?: number;
+        }>;
       }>(`/attempts/${id}`),
     update: (
       id: string,
@@ -194,12 +209,38 @@ export const api = {
         method: 'POST',
       }),
     submit: (id: string) =>
-      apiRequest<{ score: number; totalQuestions: number; percentage: number; rank?: number }>(
-        `/attempts/${id}/submit`,
-        {
-          method: 'POST',
-        }
-      ),
+      apiRequest<{
+        score: number;
+        totalQuestions: number;
+        totalMarks: number;
+        percentage: number;
+        correctAnswers: number;
+        incorrectAnswers: number;
+        unattemptedAnswers: number;
+        notAttemptedAnswers: number;
+        rank?: number;
+        totalParticipants?: number;
+        subjectScores?: Array<{
+          name: string;
+          totalQuestions: number;
+          totalMarks: number;
+          correctAnswers: number;
+          incorrectAnswers: number;
+          unattemptedAnswers: number;
+          notAttemptedAnswers: number;
+          score: number;
+        }>;
+      }>(`/attempts/${id}/submit`, {
+        method: 'POST',
+      }),
+    pause: (id: string) =>
+      apiRequest<{ paused: boolean; submitted?: boolean }>(`/attempts/${id}/pause`, {
+        method: 'POST',
+      }),
+    resume: (id: string) =>
+      apiRequest<{ submitted: boolean; remainingSeconds?: number }>(`/attempts/${id}/resume`, {
+        method: 'POST',
+      }),
     getUserAttempts: () => apiRequest<Array<any>>('/attempts'),
     getLeaderboard: (limit?: number) =>
       apiRequest<{
@@ -226,6 +267,18 @@ export const api = {
   },
   performance: {
     getPerformance: () => apiRequest<any>('/performance'),
+  },
+  notifications: {
+    registerDeviceToken: (token: string, platform: 'android' | 'ios' = 'android') =>
+      apiRequest<{ message: string }>('/notifications/device-token', {
+        method: 'POST',
+        body: JSON.stringify({ token, platform }),
+      }),
+    removeDeviceToken: (token: string) =>
+      apiRequest<{ message: string }>('/notifications/device-token', {
+        method: 'DELETE',
+        body: JSON.stringify({ token }),
+      }),
   },
 };
 

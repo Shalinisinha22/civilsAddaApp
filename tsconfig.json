@@ -11,7 +11,9 @@
       "@screens/*": ["src/screens/*"],
       "@theme/*": ["src/theme/*"],
       "@utils/*": ["src/utils/*"],
-      "@assets/*": ["src/assets/*"]
+      "@services/*": ["src/services/*"],
+      "@assets/*": ["src/assets/*"],
+      "@types/*": ["src/types/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],
