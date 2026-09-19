@@ -97,11 +97,12 @@ const AttemptsScreen: React.FC = () => {
 
       {loading ? (
         <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       ) : attempts.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Icons.Document size={40} color={colors.gray400} />
+          <Icons.Document size={48} color={colors.gray400} />
           <Text style={styles.emptyTitle}>No attempts yet</Text>
           <Text style={styles.emptyText}>
             Start taking tests to see your performance here
@@ -114,18 +115,7 @@ const AttemptsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={styles.tableHeaderText}>Test</Text>
-            <Text style={styles.tableHeaderText}>Started</Text>
-            <Text style={styles.tableHeaderText}>Status</Text>
-            <Text style={[styles.tableHeaderText, styles.tableHeaderTextRight]}>
-              Score
-            </Text>
-            <Text style={[styles.tableHeaderText, styles.tableHeaderTextCenter]}>
-              Actions
-            </Text>
-          </View>
+        <View style={styles.cardList}>
           {attempts.map((attempt) => {
             const isCompleted =
               attempt.submittedAt !== null && attempt.score !== null;
@@ -137,58 +127,47 @@ const AttemptsScreen: React.FC = () => {
             return (
               <TouchableOpacity
                 key={attempt.attemptId}
-                style={styles.tableRow}
+                style={styles.attemptCard}
                 onPress={() =>
                   navigation.navigate('TestAttempt', {
                     testId: attempt.testId,
                     attemptId: attempt.attemptId,
                   })
                 }
+                activeOpacity={0.7}
               >
-                <View style={styles.tableCell}>
-                  <Text style={styles.tableCellTitle}>{attempt.testTitle}</Text>
-                  <Text style={styles.tableCellSubtext}>
-                    {attempt.totalQuestions} questions
-                  </Text>
-                </View>
-                <View style={styles.tableCell}>
-                  <Text style={styles.tableCellText}>
-                    {formatDate(attempt.startedAt)}
-                  </Text>
-                </View>
-                <View style={styles.tableCell}>
+                <View style={styles.attemptCardTop}>
+                  <View style={styles.attemptCardInfo}>
+                    <Text style={styles.attemptCardTitle} numberOfLines={2}>
+                      {attempt.testTitle}
+                    </Text>
+                    <Text style={styles.attemptCardMeta}>
+                      {attempt.totalQuestions} questions
+                    </Text>
+                  </View>
                   {isCompleted ? (
-                    <View style={styles.badgeContainer}>
-                      <Text style={styles.badgeSuccess}>Completed</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.badgeContainer}>
-                      <Text style={styles.badgeWarning}>In Progress</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={[styles.tableCell, styles.tableCellRight]}>
-                  {isCompleted ? (
-                    <View>
+                    <View style={styles.scoreBadge}>
                       <Text
                         style={[
-                          styles.scoreText,
+                          styles.scoreBadgeText,
                           { color: getScoreColor(attempt.score, attempt.totalQuestions) },
                         ]}
                       >
-                        {Number(attempt.score).toFixed(2)}/{attempt.totalQuestions}
-                      </Text>
-                      <Text style={styles.scorePercentage}>
-                        {percentage.toFixed(2)}%
+                        {percentage.toFixed(0)}%
                       </Text>
                     </View>
                   ) : (
-                    <Text style={styles.scoreDash}>-</Text>
+                    <View style={styles.inProgressBadge}>
+                      <Text style={styles.inProgressBadgeText}>In Progress</Text>
+                    </View>
                   )}
                 </View>
-                <View style={[styles.tableCell, styles.tableCellCenter]}>
-                  <Text style={styles.actionLink}>
-                    {isCompleted ? 'Review' : 'Continue'}
+                <View style={styles.attemptCardBottom}>
+                  <Text style={styles.attemptCardDate}>
+                    {formatDate(attempt.startedAt)}
+                  </Text>
+                  <Text style={styles.attemptCardAction}>
+                    {isCompleted ? 'Review →' : 'Continue →'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -212,148 +191,122 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.gray900,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.gray600,
   },
   centerContent: {
     paddingVertical: 48,
     alignItems: 'center',
+    gap: 12,
   },
   loadingText: {
     color: colors.gray500,
+    fontSize: 14,
   },
   emptyCard: {
     backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 48,
+    borderRadius: 14,
+    padding: 40,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.gray200,
+    gap: 8,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: colors.gray900,
-    marginBottom: 8,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.gray600,
-    marginBottom: 24,
     textAlign: 'center',
   },
   emptyButton: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 24,
     paddingVertical: 12,
+    marginTop: 8,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   emptyButtonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
-  table: {
+  cardList: {
+    gap: 10,
+  },
+  attemptCard: {
     backgroundColor: colors.white,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.gray200,
-    overflow: 'hidden',
+    padding: 14,
   },
-  tableHeader: {
+  attemptCardTop: {
     flexDirection: 'row',
-    backgroundColor: colors.gray50,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
-  tableHeaderText: {
+  attemptCardInfo: {
     flex: 1,
-    fontSize: 12,
+    marginRight: 12,
+  },
+  attemptCardTitle: {
+    fontSize: 15,
     fontWeight: '600',
-    color: colors.gray700,
-  },
-  tableHeaderTextRight: {
-    textAlign: 'right',
-  },
-  tableHeaderTextCenter: {
-    textAlign: 'center',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray100,
-    backgroundColor: colors.white,
-  },
-  tableCell: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  tableCellRight: {
-    alignItems: 'flex-end',
-  },
-  tableCellCenter: {
-    alignItems: 'center',
-  },
-  tableCellTitle: {
-    fontSize: 14,
-    fontWeight: '500',
     color: colors.gray900,
+    marginBottom: 4,
   },
-  tableCellSubtext: {
-    fontSize: 11,
-    color: colors.gray500,
-    marginTop: 4,
-  },
-  tableCellText: {
+  attemptCardMeta: {
     fontSize: 12,
-    color: colors.gray600,
-  },
-  badgeContainer: {
-    alignSelf: 'flex-start',
-  },
-  badgeSuccess: {
-    fontSize: 11,
-    color: colors.success,
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    fontWeight: '600',
-  },
-  badgeWarning: {
-    fontSize: 11,
-    color: colors.warning,
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    fontWeight: '600',
-  },
-  scoreText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  scorePercentage: {
-    fontSize: 11,
     color: colors.gray500,
-    marginTop: 2,
   },
-  scoreDash: {
-    fontSize: 14,
-    color: colors.gray400,
+  scoreBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.primaryContainer,
   },
-  actionLink: {
-    fontSize: 14,
+  scoreBadgeText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  inProgressBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#FEF3C7',
+  },
+  inProgressBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.warning,
+  },
+  attemptCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray100,
+  },
+  attemptCardDate: {
+    fontSize: 12,
+    color: colors.gray500,
+  },
+  attemptCardAction: {
+    fontSize: 13,
     color: colors.primary,
     fontWeight: '600',
   },

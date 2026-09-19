@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import HTMLDescription from '../../components/HTMLDescription';
 import {
   View,
   Text,
@@ -107,26 +106,6 @@ const HomeScreen: React.FC = () => {
       {/* Banner carousel */}
       <BannerCarousel />
 
-      {/* Stats strip */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>1000+</Text>
-          <Text style={styles.statLabel}>Questions Practiced</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>50+</Text>
-          <Text style={styles.statLabel}>Mock Tests</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>95%</Text>
-          <Text style={styles.statLabel}>Positive Feedback</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>24/7</Text>
-          <Text style={styles.statLabel}>Support</Text>
-        </View>
-      </View>
-
       {/* Series */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Series</Text>
@@ -221,51 +200,6 @@ const HomeScreen: React.FC = () => {
           ))}
         </View>
       )}
-
-      {/* How it Works */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>How it Works</Text>
-        <Text style={styles.sectionSubtitle}>
-          Get started in four simple steps and begin your journey to success.
-        </Text>
-        <View style={styles.stepsRow}>
-          {[
-            { step: '1', title: 'Choose a Test' },
-            { step: '2', title: 'Attempt & Submit' },
-            { step: '3', title: 'Get Results' },
-            { step: '4', title: 'Improve & Track' },
-          ].map((s) => (
-            <View key={s.step} style={styles.stepCard}>
-              <Text style={styles.stepBadge}>{s.step}</Text>
-              <Text style={styles.stepTitle}>{s.title}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-
-      {/* FAQs */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>FAQs</Text>
-        <View style={styles.faqCard}>
-          <Text style={styles.faqQuestion}>Are the tests timed?</Text>
-          <Text style={styles.faqAnswer}>
-            Yes, each test has a set duration shown on the details page.
-          </Text>
-        </View>
-        <View style={styles.faqCard}>
-          <Text style={styles.faqQuestion}>Do you provide solutions?</Text>
-          <Text style={styles.faqAnswer}>
-            Solutions and explanations are provided after submission.
-          </Text>
-        </View>
-        <View style={styles.faqCard}>
-          <Text style={styles.faqQuestion}>How do I purchase tests?</Text>
-          <Text style={styles.faqAnswer}>
-            Browse our test packages, add a package to your cart, and complete checkout via Razorpay.
-          </Text>
-        </View>
-      </View>
 
       {/* Bottom CTA */}
       <View style={styles.bottomCta}>
@@ -442,32 +376,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
   },
-  statsRow: {
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  statCard: {
-    flexBasis: '48%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md - 4,
-    paddingHorizontal: spacing.sm + 2,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  statNumber: {
-    ...typography.titleLarge,
-    color: colors.onSurface,
-    fontWeight: '700',
-  },
-  statLabel: {
-    ...typography.bodySmall,
-    color: colors.onSurfaceVariant,
-    marginTop: spacing.xs,
-  },
   section: {
     marginTop: spacing.lg,
     paddingHorizontal: spacing.md,
@@ -516,103 +424,10 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
     paddingVertical: spacing.md,
   },
-  categoryCard: {
-    flexBasis: '31%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md - 4,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  categoryEmoji: {
-    fontSize: 24,
-    marginBottom: spacing.xs,
-  },
   categoryName: {
     ...typography.labelMedium,
     color: colors.onSurface,
     fontWeight: '600',
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm + 2,
-  },
-  stepCard: {
-    flexBasis: '47%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md - 4,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  stepBadge: {
-    ...typography.labelMedium,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  stepTitle: {
-    ...typography.titleSmall,
-    fontWeight: '600',
-    color: colors.onSurface,
-  },
-  appButton: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: colors.primary,
-  },
-  appButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.white,
-  },
-  partnerRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm + 2,
-    marginTop: spacing.sm,
-  },
-  partnerCard: {
-    flexBasis: '30%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md - 4,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  partnerLetter: {
-    ...typography.titleMedium,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  partnerLabel: {
-    ...typography.bodySmall,
-    color: colors.onSurfaceVariant,
-  },
-  faqCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md - 4,
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.gray200,
-  },
-  faqQuestion: {
-    ...typography.titleSmall,
-    fontWeight: '600',
-    color: colors.onSurface,
-    marginBottom: spacing.xs,
-  },
-  faqAnswer: {
-    ...typography.bodySmall,
-    color: colors.onSurfaceVariant,
   },
   bottomCta: {
     marginTop: spacing.lg,

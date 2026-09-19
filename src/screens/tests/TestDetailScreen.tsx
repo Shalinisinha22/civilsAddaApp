@@ -612,6 +612,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     marginBottom: 2,
   },
+  typePillText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   typeDemo: {
     backgroundColor: '#fef3c7',
   },

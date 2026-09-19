@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.surface,
     ...(Platform.OS === 'android' ? elevation[2] : {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
       shadowOpacity: 0.1,
       shadowRadius: 2,
     }),
+    minHeight: 52,
   },
   left: {
     flexDirection: 'row',
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backText: {
-    fontSize: 28,
+    fontSize: 26,
     color: colors.onSurface,
     fontWeight: '300',
   },
@@ -104,20 +105,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuIcon: {
-    fontSize: 24,
+    fontSize: 22,
     color: colors.onSurface,
     fontWeight: '300',
   },
   logoImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
   },
   title: {
     marginLeft: spacing.sm,
-    ...typography.titleLarge,
+    ...typography.titleMedium,
     color: colors.onSurface,
     flex: 1,
+    fontWeight: '700',
   },
 });
 
