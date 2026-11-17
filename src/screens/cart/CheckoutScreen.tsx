@@ -134,6 +134,22 @@ const CheckoutScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Cart');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Icons.ArrowBack size={22} color={colors.gray800} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Checkout</Text>
+      </View>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -202,6 +218,29 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.gray50,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray200,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    backgroundColor: colors.gray100,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.gray900,
   },
   listContent: {
     padding: 16,

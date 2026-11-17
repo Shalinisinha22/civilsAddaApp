@@ -86,5 +86,7 @@ export const Icons = {
   School: (props: { size?: number; color?: string }) => <Icon name="school" {...props} library="material" />,
   ShowChart: (props: { size?: number; color?: string }) => <Icon name="show-chart" {...props} library="material" />,
   Pause: (props: { size?: number; color?: string }) => <Icon name="pause" {...props} library="material" />,
+  ArrowBack: (props: { size?: number; color?: string }) => <Icon name="arrow-back" {...props} library="material" />,
+  Menu: (props: { size?: number; color?: string }) => <Icon name="menu" {...props} library="material" />,
 };
 

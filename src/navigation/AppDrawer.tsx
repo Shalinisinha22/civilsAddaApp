@@ -111,7 +111,7 @@ const CustomDrawerContent = (props: any) => {
 
 const AppDrawer: React.FC = () => {
   return (
-    <Drawer.Navigator
+    <Drawer.Navigator backBehavior="history"
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,

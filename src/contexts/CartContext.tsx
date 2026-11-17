@@ -56,6 +56,10 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [items]);
 
   const addToCart = (item: CartItem) => {
+    // Free tests and packages cannot be added to cart
+    if (!item || (item.price !== undefined && Number(item.price) <= 0)) {
+      return;
+    }
     setItems((prev) => {
       // Check if item already exists
       if (prev.find((i) => i.id === item.id)) {

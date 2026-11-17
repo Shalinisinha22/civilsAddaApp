@@ -45,7 +45,7 @@ const MainTabs: React.FC = () => {
   const { itemCount } = useCart();
 
   return (
-    <Tab.Navigator
+    <Tab.Navigator backBehavior="history"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

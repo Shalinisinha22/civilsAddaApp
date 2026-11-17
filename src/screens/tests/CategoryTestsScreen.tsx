@@ -57,7 +57,7 @@ const CategoryTestsScreen: React.FC = () => {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) { navigation.goBack(); } else { navigation.navigate('Tests'); } }}>
           <Text style={styles.backBtnText}>{'←'}</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -97,7 +97,7 @@ const CategoryTestsScreen: React.FC = () => {
                 ) : null}
               </View>
             </View>
-                    {(isPurchased || test.isPurchased || test.isDemo) ? (
+                    {(isPurchased || pkg?.price === 0 || test.isPurchased || test.isDemo || test.price === 0) ? (
               <TouchableOpacity
                 style={styles.startBtn}
                 onPress={() => navigation.navigate('TestDetail', { testId: test.id })}

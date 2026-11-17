@@ -1,35 +1,56 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { DrawerActions } from '@react-navigation/native';
+import { useNavigation, DrawerActions, NavigationContainerRef } from '@react-navigation/native';
 import { colors, elevation, typography, spacing } from '@theme/colors';
 import { useTranslation } from 'react-i18next';
+import { Icons } from '@components/Icons';
 
 type AppHeaderProps = {
   routeName: string | null;
+  navigationRef?: React.RefObject<NavigationContainerRef<any>>;
 };
 
-const AppHeader: React.FC<AppHeaderProps> = ({ routeName }) => {
+const detailScreens = [
+  'TestDetail',
+  'PackageDetail',
+  'CategoryTests',
+  'Checkout',
+  'PaymentSuccess',
+  'PaymentFailure',
+  'TestAttempt',
+];
+
+const AppHeader: React.FC<AppHeaderProps> = ({ routeName, navigationRef }) => {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
-  // Safely check if can go back
-  let canGoBack = false;
-  try {
-    canGoBack = navigation.canGoBack();
-  } catch {
-    canGoBack = false;
-  }
-
   const isAuth = routeName === 'Login';
+  const isDetailScreen = detailScreens.includes(routeName || '');
+  const isRootScreen = routeName === 'Home' || routeName === 'HomeTabs' || routeName === 'Login';
+
+  const canGoBack = isDetailScreen || (!isRootScreen && Boolean(navigationRef?.current?.canGoBack() || navigation.canGoBack()));
 
   // Open drawer using DrawerActions
   const handleOpenDrawer = () => {
     try {
-      // Use DrawerActions to open drawer - this works from anywhere in the navigation tree
       navigation.dispatch(DrawerActions.openDrawer());
     } catch (error) {
       console.error('Error opening drawer:', error);
+    }
+  };
+
+  const handleGoBack = () => {
+    if (navigationRef?.current?.canGoBack()) {
+      navigationRef.current.goBack();
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // Fallback: navigate to Home
+      try {
+        navigation.navigate('HomeTabs', { screen: 'Home' });
+      } catch {
+        navigation.navigate('Home');
+      }
     }
   };
 
@@ -37,15 +58,16 @@ const AppHeader: React.FC<AppHeaderProps> = ({ routeName }) => {
     <View style={styles.container}>
       <View style={styles.left}>
         {canGoBack && !isAuth ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>{'‹'}</Text>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backButton} activeOpacity={0.7}>
+            <Icons.ArrowBack size={24} color={colors.gray800} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={handleOpenDrawer}
             style={styles.menuButton}
+            activeOpacity={0.7}
           >
-            <Text style={styles.menuIcon}>☰</Text>
+            <Icons.Menu size={24} color={colors.gray800} />
           </TouchableOpacity>
         )}
         <Image source={require('../assets/logo.jpg')} style={styles.logoImage} />
@@ -89,11 +111,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backText: {
-    fontSize: 26,
-    color: colors.onSurface,
-    fontWeight: '300',
-  },
   menuButton: {
     marginRight: spacing.sm,
     paddingHorizontal: spacing.xs,
@@ -103,11 +120,6 @@ const styles = StyleSheet.create({
     minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  menuIcon: {
-    fontSize: 22,
-    color: colors.onSurface,
-    fontWeight: '300',
   },
   logoImage: {
     width: 36,
@@ -124,6 +136,3 @@ const styles = StyleSheet.create({
 });
 
 export default AppHeader;
-
-
-

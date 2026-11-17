@@ -224,8 +224,14 @@ const TestDetailScreen: React.FC = () => {
     return 'none';
   })();
 
+  const isFree = Boolean(
+    data?.test.isDemo ||
+    (Number(data?.test.price) === 0 &&
+      (!data?.test.packages || data.test.packages.length === 0 || data.test.packages.some((p) => Number(p.price) === 0)))
+  );
+
   const handleAddToCart = () => {
-    if (!data) return;
+    if (!data || isFree) return;
     addToCart({
       id: data.test.id,
       title: data.test.title,
@@ -264,7 +270,7 @@ const TestDetailScreen: React.FC = () => {
       return;
     }
 
-    if (!data.test.isDemo && !data.test.isPurchased) {
+    if (!isFree && !data.test.isPurchased) {
       addToast('Please purchase this test before attempting', 'error');
       return;
     }
@@ -326,6 +332,25 @@ const TestDetailScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <View style={styles.headerBar}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Tests');
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Icons.ArrowBack size={20} color={colors.gray800} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {test.title}
+        </Text>
+      </View>
+
       {/* Header card */}
       <View style={styles.card}>
         <View style={styles.headerTop}>
@@ -360,9 +385,9 @@ const TestDetailScreen: React.FC = () => {
             <Text style={styles.statLabel}>Marking (C/W/U)</Text>
           </View>
           <View style={styles.statBox}>
-            <View style={[styles.typePill, test.isDemo ? styles.typeDemo : test.price === 0 ? styles.typePackage : styles.typePaid]}>
-              <Text style={[styles.typePillText, test.isDemo ? styles.typeDemoText : test.price === 0 ? styles.typePackageText : styles.typePaidText]}>
-                {test.isDemo ? 'Demo' : test.price === 0 ? 'Package' : 'Premium'}
+            <View style={[styles.typePill, isFree ? styles.typeDemo : styles.typePaid]}>
+              <Text style={[styles.typePillText, isFree ? styles.typeDemoText : styles.typePaidText]}>
+                {isFree ? 'Free' : 'Premium'}
               </Text>
             </View>
             <Text style={styles.statLabel}>Type</Text>
@@ -406,7 +431,7 @@ const TestDetailScreen: React.FC = () => {
         )}
 
         {/* Available in Package badge */}
-        {test.price === 0 && !test.isDemo ? (
+        {!isFree && test.packages && test.packages.length > 0 ? (
           <View style={styles.packageBadgeRow}>
             <View style={styles.packageBadge}>
               <Text style={styles.packageBadgeText}>Available in Package</Text>
@@ -480,7 +505,37 @@ const TestDetailScreen: React.FC = () => {
         const isDateRestricted = isBeforeStart || isAfterEnd;
         return (
       <View style={styles.card}>
-        {test.price === 0 && !test.isDemo && test.packages.length > 0 ? (
+        {isFree ? (
+          <>
+            <Text style={styles.priceText}>Free</Text>
+            {isDateRestricted ? (
+              <View style={[styles.startButton, styles.disabledButton]}>
+                <Text style={styles.startButtonText}>{isBeforeStart ? 'Test Not Started Yet' : 'Test Date Passed'}</Text>
+              </View>
+            ) : (
+            <TouchableOpacity
+              style={[styles.startButton, starting ? styles.disabledButton : null]}
+              onPress={handleStartAttempt}
+              disabled={starting}
+              activeOpacity={0.9}
+            >
+              {starting ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.startButtonText}>
+                  {attemptStatus === 'submitted'
+                    ? 'View Results'
+                    : attemptStatus === 'in_progress'
+                    ? 'Continue Test'
+                    : isAuthenticated
+                    ? 'Start Free Test'
+                    : 'Login to Start'}
+                </Text>
+              )}
+            </TouchableOpacity>
+            )}
+          </>
+        ) : test.packages && test.packages.length > 0 ? (
           <>
             {test.packages.map((pkg, i) => (
               <View key={pkg.id || i} style={[styles.pkgRow, i > 0 ? { marginTop: 6 } : null]}>
@@ -533,36 +588,6 @@ const TestDetailScreen: React.FC = () => {
               </Text>
             )}
           </>
-        ) : test.isDemo ? (
-          <>
-            <Text style={styles.priceText}>Free Demo</Text>
-            {isDateRestricted ? (
-              <View style={[styles.startButton, styles.disabledButton]}>
-                <Text style={styles.startButtonText}>{isBeforeStart ? 'Test Not Started Yet' : 'Test Date Passed'}</Text>
-              </View>
-            ) : (
-            <TouchableOpacity
-              style={[styles.startButton, starting ? styles.disabledButton : null]}
-              onPress={handleStartAttempt}
-              disabled={starting}
-              activeOpacity={0.9}
-            >
-              {starting ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Text style={styles.startButtonText}>
-                  {attemptStatus === 'submitted'
-                    ? 'View Results'
-                    : attemptStatus === 'in_progress'
-                    ? 'Continue Demo Test'
-                    : isAuthenticated
-                    ? 'Start Demo Test'
-                    : 'Login to Start'}
-                </Text>
-              )}
-            </TouchableOpacity>
-            )}
-          </>
         ) : (
           <>
             <Text style={styles.priceText}>₹{test.price}</Text>
@@ -584,10 +609,10 @@ const TestDetailScreen: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.startButton,
-                (!test.isPurchased && !test.isDemo && attemptStatus === 'none') || starting ? styles.disabledButton : null,
+                (!test.isPurchased && attemptStatus === 'none') || starting ? styles.disabledButton : null,
               ]}
               onPress={handleStartAttempt}
-              disabled={(!test.isPurchased && !test.isDemo && attemptStatus === 'none') || starting}
+              disabled={(!test.isPurchased && attemptStatus === 'none') || starting}
               activeOpacity={0.9}
             >
               {starting ? (
@@ -618,6 +643,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.gray50,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.gray200,
+    marginBottom: 4,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    backgroundColor: colors.gray100,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.gray900,
+    flex: 1,
   },
   scrollContent: {
     padding: 12,

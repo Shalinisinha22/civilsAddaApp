@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StatusBar, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StatusBar, StyleSheet, View, ActivityIndicator, BackHandler, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { disableSystemFontScaling } from '@utils/fontScaling';
 
 disableSystemFontScaling();
@@ -24,6 +25,58 @@ const AppContent: React.FC = () => {
   const { loading, isAuthenticated } = useAuth();
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   const [routeName, setRouteName] = useState<string | null>(null);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    const handleHardwareBack = () => {
+      // 1. If navigation stack can go back, navigate back!
+      if (navigationRef.current?.canGoBack()) {
+        navigationRef.current.goBack();
+        return true;
+      }
+
+      // 2. If the user is on a tab or subscreen other than Home, navigate back to Home
+      const currentRoute = navigationRef.current?.getCurrentRoute();
+      const currentRouteName = currentRoute?.name;
+
+      if (currentRouteName && currentRouteName !== 'Home' && currentRouteName !== 'Login') {
+        try {
+          navigationRef.current?.navigate('HomeTabs', { screen: 'Home' });
+          return true;
+        } catch {
+          // continue to exit dialog if navigate fails
+        }
+      }
+
+      // 3. User is on the root screen (Home) -> Show exit confirmation dialog!
+      Alert.alert(
+        t('exitAppTitle', { defaultValue: 'Exit Civils Adda' }),
+        t('exitAppMessage', { defaultValue: 'Are you sure you want to exit the app?' }),
+        [
+          {
+            text: t('cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+            onPress: () => {},
+          },
+          {
+            text: t('exit', { defaultValue: 'Exit' }),
+            style: 'destructive',
+            onPress: () => BackHandler.exitApp(),
+          },
+        ],
+        { cancelable: true }
+      );
+
+      return true; // Prevents the app from closing immediately
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleHardwareBack
+    );
+
+    return () => backHandler.remove();
+  }, [t]);
 
   useEffect(() => {
     initNotifications();
@@ -68,7 +121,7 @@ const AppContent: React.FC = () => {
     >
       <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
-        {routeName && routeName !== 'Login' && <AppHeader routeName={routeName} />}
+        {routeName && routeName !== 'Login' && <AppHeader routeName={routeName} navigationRef={navigationRef} />}
 
         <SafeAreaView style={styles.content} edges={['bottom', 'left', 'right']}>
           <RootNavigator />

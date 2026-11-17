@@ -112,7 +112,7 @@ const PackageDetailScreen: React.FC = () => {
   return (
     <ScrollView style={styles.root}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => { if (navigation.canGoBack()) { navigation.goBack(); } else { navigation.navigate('Tests'); } }}>
           <Text style={styles.backBtnText}>{'←'}</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{pkg.name}</Text>
@@ -139,22 +139,22 @@ const PackageDetailScreen: React.FC = () => {
           {pkg.price > 0 ? <Text style={styles.priceLabel}> one-time</Text> : null}
         </View>
 
-        {!pkg.isPurchased ? (
+        {pkg.price > 0 && !pkg.isPurchased ? (
           <TouchableOpacity
             style={[styles.addToCartBtn, addingToCart && { opacity: 0.6 }]}
             onPress={handleAddToCart}
             disabled={addingToCart}
           >
             <Text style={styles.addToCartBtnText}>
-              {addingToCart ? 'Adding...' : pkg.price > 0 ? 'Add to Cart' : 'Get Free'}
+              {addingToCart ? 'Adding...' : 'Add to Cart'}
             </Text>
           </TouchableOpacity>
-        ) : (
+        ) : pkg.isPurchased ? (
           <View style={styles.purchasedBadge}>
             <Icons.Check size={18} color={colors.white} />
             <Text style={styles.purchasedBadgeText}> Purchased</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.categoriesSection}>
@@ -192,7 +192,7 @@ const PackageDetailScreen: React.FC = () => {
                           {test.totalQuestions ? ` • ${test.totalQuestions} Q` : ''}
                         </Text>
                       </View>
-        {pkg.isPurchased || test.isPurchased || test.isDemo ? (
+        {pkg.isPurchased || pkg.price === 0 || test.isPurchased || test.isDemo || test.price === 0 ? (
           <TouchableOpacity
             style={styles.startBtn}
             onPress={() => navigation.navigate('TestDetail', { testId: test.id })}

@@ -145,10 +145,8 @@
   "option": "Option",
   "timeUpAutoSubmitted": "Time's up! Test auto-submitted.",
   "testSubmittedSuccess": "Test submitted successfully!",
-  "testStartedTimer": "Test started! Timer is now running."
+  "testStartedTimer": "Test started! Timer is now running.",
+  "exitAppTitle": "Exit Civils Adda",
+  "exitAppMessage": "Are you sure you want to exit the app?",
+  "exit": "Exit"
 }
-
-
-
-
-
