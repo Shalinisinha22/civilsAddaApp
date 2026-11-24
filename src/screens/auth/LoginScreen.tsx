@@ -35,9 +35,23 @@ const LoginScreen: React.FC = () => {
     }
   }, [isAuthenticated, authLoading, navigation]);
 
+  const handleNameChange = (text: string) => {
+    setName(text.replace(/[^a-zA-Z\s]/g, ''));
+  };
+
+  const handlePhoneChange = (text: string) => {
+    setPhoneNumber(text.replace(/\D/g, '').slice(0, 10));
+  };
+
   const handleSubmit = async () => {
-    if (!phoneNumber.trim()) {
+    const trimmedPhone = phoneNumber.trim();
+    if (!trimmedPhone) {
       addToast('Phone number is required', 'error');
+      return;
+    }
+    const phoneNum = Number(trimmedPhone);
+    if (!/^\d{10}$/.test(trimmedPhone) || phoneNum < 6000000000 || phoneNum > 9999900000) {
+      addToast('Mobile number must be between 6000000000 and 9999900000', 'error');
       return;
     }
     setLoading(true);
@@ -46,12 +60,18 @@ const LoginScreen: React.FC = () => {
         await login(phoneNumber.trim(), password);
         addToast(t('loginSuccess') || 'Login successful! Redirecting...', 'success');
       } else {
-        if (!name.trim()) {
+        const trimmedName = name.trim();
+        if (!trimmedName) {
           addToast('Name is required', 'error');
           setLoading(false);
           return;
         }
-        await register(name.trim(), phoneNumber.trim(), password, email.trim() || undefined);
+        if (!/^[a-zA-Z\s]+$/.test(trimmedName) || trimmedName.replace(/\s+/g, '').length < 3) {
+          addToast('Name must contain only alphabets and at least 3 characters', 'error');
+          setLoading(false);
+          return;
+        }
+        await register(trimmedName, phoneNumber.trim(), password, email.trim() || undefined);
         addToast(
           t('registrationSuccess') || 'Registration successful! Redirecting...',
           'success',
@@ -183,10 +203,14 @@ const LoginScreen: React.FC = () => {
                 <TextInput
                   style={styles.input}
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={handleNameChange}
                   placeholder={t('enterYourName') || 'Enter your name'}
                   placeholderTextColor={colors.gray400}
+                  autoCapitalize="words"
                 />
+                <Text style={styles.helperText}>
+                  Only alphabets allowed, minimum 3 characters
+                </Text>
               </View>
             )}
 
@@ -195,10 +219,11 @@ const LoginScreen: React.FC = () => {
               <TextInput
                 style={styles.input}
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
+                onChangeText={handlePhoneChange}
                 placeholder={t('phonePlaceholder') || 'Enter your mobile number'}
                 placeholderTextColor={colors.gray400}
-                keyboardType="phone-pad"
+                keyboardType="number-pad"
+                maxLength={10}
               />
             </View>
 

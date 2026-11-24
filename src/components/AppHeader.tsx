@@ -18,6 +18,7 @@ const detailScreens = [
   'PaymentSuccess',
   'PaymentFailure',
   'TestAttempt',
+  'Settings',
 ];
 
 const AppHeader: React.FC<AppHeaderProps> = ({ routeName, navigationRef }) => {

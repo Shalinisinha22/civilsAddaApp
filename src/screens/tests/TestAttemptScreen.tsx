@@ -604,6 +604,26 @@ const TestAttemptScreen: React.FC = () => {
     }
   };
 
+  const saveAndNext = async () => {
+    if (!detail) return;
+    const hasNext = currentQuestionIndex < visibleQuestions.length - 1;
+    const nextIndex = hasNext ? currentQuestionIndex + 1 : currentQuestionIndex;
+    if (hasNext) {
+      setCurrentQuestionIndex(nextIndex);
+    }
+    if (attemptId && !submitted && !submitting) {
+      try {
+        await api.attempts.update(attemptId, {
+          answers,
+          currentQuestionIndex: globalIndexFor(nextIndex),
+        });
+        addToast(t('answerSaved'), 'success');
+      } catch (err: any) {
+        addToast(err.message || 'Failed to save answer', 'error');
+      }
+    }
+  };
+
   const clearAnswer = async () => {
     if (!currentQuestion || !attemptId || submitted) return;
     if (!(currentQuestion.id in answers)) {
@@ -1446,17 +1466,19 @@ const TestAttemptScreen: React.FC = () => {
               {t('clear')}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSave]} onPress={saveAnswer}>
-            <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('save')}</Text>
-          </TouchableOpacity>
           {currentQuestionIndex < visibleQuestions.length - 1 ? (
-            <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonNext]} onPress={goToNext}>
-              <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('next')}</Text>
+            <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSave]} onPress={saveAndNext}>
+              <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('saveAndNext')}</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSubmit]} onPress={() => setShowSubmitModal(true)}>
-              <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('submit')}</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSave]} onPress={saveAnswer}>
+                <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('save')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.footerNavButton, styles.footerNavButtonSubmit]} onPress={() => setShowSubmitModal(true)}>
+                <Text style={[styles.footerNavButtonText, styles.footerNavButtonTextPrimary]}>{t('submit')}</Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
       )}
